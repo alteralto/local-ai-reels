@@ -241,6 +241,15 @@ bash finish.sh check final-linear.mp4
 
 ## Частые ошибки
 
+- **Chrome не скачивается: ошибка 403 при первом `snapshot` или `render`.** Из некоторых стран Google не отдаёт
+  chrome-headless-shell. Подойдёт уже установленный браузер на Chromium, путь к нему задаётся переменной
+  `HYPERFRAMES_BROWSER_PATH`:
+  - Windows (Edge стоит всегда): `C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe`
+  - macOS: `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+  - Linux: `/usr/bin/chromium` или `/usr/bin/google-chrome`
+  Пример: `export HYPERFRAMES_BROWSER_PATH="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"`.
+  Кадры тогда снимаются скриншотами; ролик на 24 секунды рендерится меньше чем за минуту.
+  Если первый запуск упал с «Navigation timeout», повторить команду: браузер просто долго стартовал.
 - **У `<audio>` в HyperFrames обязателен `id`.** Без него звук молча пропадает из рендера.
 - **JetBrains Mono не содержит кириллицы.** Моноширинный шрифт — IBM Plex Mono.
 - **Whisper режет «Санкт-Паули» на два слова**, а тире распознаёт отдельным словом. `captext.py` их склеивает.

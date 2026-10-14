@@ -63,6 +63,15 @@ bash ../hf.sh render -o renders/reel-linear.mp4 --fps 30 --quality looks
 
 `hf.sh` запускает HyperFrames 0.8.75 через `npx` (при первом запуске он скачается) с выключенной телеметрией.
 
+Если HyperFrames не может скачать Chrome (ошибка 403 — так бывает в некоторых странах), укажите уже установленный
+браузер на Chromium, например Edge на Windows:
+
+```bash
+export HYPERFRAMES_BROWSER_PATH="C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe"
+```
+
+Пути для macOS и Linux — в [частых ошибках](docs/guide.md#частые-ошибки).
+
 ## Полный цикл
 
 Пошаговая инструкция — [docs/guide.md](docs/guide.md): установка, свой голос, ударения, отбор дублей, границы
