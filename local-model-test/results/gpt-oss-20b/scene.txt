@@ -1,0 +1,30 @@
+```html
+<div class="kicker mono" style="position:absolute; top:150px;">Королевское общество здравоохранения Британии выяснило:</div>
+<svg class="map m1" viewBox="0 0 900 900" style="position:absolute; left:80px; top:260px; width:740px; height:1190px;">
+  <defs>
+    <mask id="reach">
+      <rect width="900" height="900" fill="white"/>
+      <circle class="hole" cx="450" cy="450" r="0" fill="black"/>
+    </mask>
+  </defs>
+  <g class="grid">
+    <line x1="0" y1="450" x2="900" y2="450" stroke="#e8f0ff" stroke-width="2"/>
+    <line x1="450" y1="0" x2="450" y2="900" stroke="#e8f0ff" stroke-width="2"/>
+  </g>
+  <circle class="center" cx="450" cy="450" r="200" fill="#123a7a" mask="url(#reach)"/>
+  <rect class="dim" width="900" height="900" mask="url(#reach)" fill="#000" opacity="0.2"/>
+</svg>
+<div class="big b1" style="position:absolute; left:80px; right:60px; top:700px;">
+  <span><em>1 из 5</em></span>
+</div>
+```
+
+```js
+3: """
+  tl.fromTo(S+" .kicker",{opacity:0,y:-20},{opacity:1,y:0,duration:.35},t+.05)
+    .fromTo(S+" .grid line",{strokeDashoffset:1000},{strokeDashoffset:0,duration:.8,ease:"power1.inOut"},t+0.5)
+    .fromTo(S+" .center",{r:0,opacity:0},{r:200,opacity:1,duration:1.2,ease:"elastic.out(1,0.3)"},t+1.4)
+    .to(S+" .hole",{attr:{r:900},duration:1.5,ease:"power2.inOut"},t+2.8)
+    .fromTo(S+" .b1 span",{yPercent:110},{yPercent:0,duration:.6,ease:"expo.out"},t+3.0);
+"""
+```

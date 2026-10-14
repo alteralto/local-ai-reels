@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+models/
+renders/
+snapshots/
+node_modules/
+.thumbnails/
+local-model-test/res-*/
+*/gen/
+reel-*/
