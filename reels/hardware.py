@@ -601,7 +601,7 @@ ENCODER_ARGS = {
     "h264_qsv": ["-c:v", "h264_qsv", "-global_quality", "20", "-preset", "medium", "-pix_fmt", "nv12"],
     "h264_amf": ["-c:v", "h264_amf", "-quality", "quality", "-rc", "cqp", "-qp_i", "18", "-qp_p", "20",
                  "-pix_fmt", "yuv420p"],
-    "libx264": ["-c:v", "libx264", "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p"],
+    "libx264": ["-c:v", "libx264", "-crf", "16", "-preset", "veryfast", "-pix_fmt", "yuv420p"],
 }
 
 

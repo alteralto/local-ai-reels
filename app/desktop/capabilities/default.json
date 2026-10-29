@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Главное окно: события и ядро Tauri; команды приложения разрешены по умолчанию.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

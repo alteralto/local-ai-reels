@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>local-ai-reels</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="logo">▶</span> local-ai-reels</div>
+    <div class="modes" role="tablist" aria-label="Режим">
+      <button id="mode-simple" role="tab">Просто</button>
+      <button id="mode-expert" role="tab">Эксперт</button>
+    </div>
+    <div class="top-right">
+      <span id="queue-info" class="muted"></span>
+      <label class="expert-only conc">одновременно
+        <select id="concurrency"><option>1</option><option>2</option><option>3</option><option>4</option></select>
+      </label>
+    </div>
+  </header>
+
+  <div id="banner" class="banner" hidden></div>
+
+  <!-- ===== Просто ===== -->
+  <main id="simple" class="simple" hidden>
+    <section class="card form">
+      <h1>Сделать ролик</h1>
+      <div class="seg">
+        <button id="src-topic" class="on">О чём ролик?</button>
+        <button id="src-text">Свой текст</button>
+      </div>
+      <div id="topic-box">
+        <textarea id="topic" rows="3" placeholder="Например: почему в городах исчезают общественные туалеты"></textarea>
+        <p class="muted small">Сценарий напишет локальная языковая модель (LM Studio или Ollama). Проверьте факты — модель может ошибаться.</p>
+      </div>
+      <div id="text-box" hidden>
+        <textarea id="own-text" rows="9" placeholder="4 коротких абзаца через пустую строку:&#10;крючок, факт, поворот, вывод.&#10;Всего — до 60 слов."></textarea>
+        <p id="text-stats" class="muted small"></p>
+      </div>
+      <h2>Оформление</h2>
+      <div id="themes" class="themes"></div>
+      <button id="make" class="big primary">Сделать ролик</button>
+      <p class="muted small">Папка роликов: <a href="#" id="simple-ws"></a></p>
+    </section>
+
+    <section class="card stage" id="simple-stage">
+      <div id="simple-empty" class="empty">
+        <div class="phone"><div class="phone-inner">9:16</div></div>
+        <p>Здесь появится ваш ролик.<br>Обычно это занимает несколько минут.</p>
+      </div>
+      <div id="simple-progress" hidden>
+        <h2 id="sp-title"></h2>
+        <ol id="sp-steps" class="steps"></ol>
+        <div class="bar"><div id="sp-bar"></div></div>
+        <p id="sp-line" class="muted small mono"></p>
+        <div id="sp-error" class="error-box" hidden></div>
+        <div class="row">
+          <button id="sp-stop">Остановить</button>
+          <button id="sp-retry" hidden>Попробовать снова</button>
+          <button id="sp-log-toggle" class="link">Подробности</button>
+        </div>
+        <pre id="sp-log" class="log" hidden></pre>
+      </div>
+      <div id="simple-done" hidden>
+        <h2 id="sd-title"></h2>
+        <div id="sd-edits" class="seg small"></div>
+        <video id="sd-video" class="reel" controls playsinline></video>
+        <div class="row center">
+          <button id="sd-save" class="primary">Сохранить видео</button>
+          <button id="sd-open">Открыть папку</button>
+          <button id="sd-again">Сделать ещё</button>
+        </div>
+      </div>
+      <div id="simple-list" class="chips"></div>
+    </section>
+  </main>
+
+  <!-- ===== Эксперт ===== -->
+  <main id="expert" class="expert" hidden>
+    <aside class="side">
+      <div class="ws">
+        <div class="muted small">Рабочая папка</div>
+        <div id="ws-path" class="mono small ws-path">не выбрана</div>
+        <div class="row">
+          <button id="ws-pick">Выбрать…</button>
+          <button id="ws-refresh" title="Обновить">⟳</button>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btn-new" class="primary">Новый ролик</button>
+        <button id="btn-draft">Черновик по теме</button>
+      </div>
+      <ul id="projects" class="projects"></ul>
+    </aside>
+
+    <section class="main">
+      <div id="pv-empty" class="empty">Выберите проект слева или создайте новый.</div>
+      <div id="pv" hidden>
+        <div class="pv-head">
+          <div>
+            <h1 id="pv-title"></h1>
+            <div id="pv-dir" class="mono small muted"></div>
+          </div>
+          <div class="row">
+            <button id="pv-run" class="primary">Запустить</button>
+            <button id="pv-yes" title="Подтверждать контрольные точки автоматически">Автопилот</button>
+            <button id="pv-stop">Остановить</button>
+            <button id="pv-reveal">Показать в папке</button>
+          </div>
+        </div>
+        <div id="pv-error" class="error-box" hidden></div>
+        <div id="pv-stages" class="pipeline"></div>
+        <div id="pv-gate" class="card gate" hidden></div>
+        <div class="cols">
+          <div class="card">
+            <h2>Сценарий <span id="pv-words" class="muted small"></span></h2>
+            <ol id="pv-blocks" class="blocks"></ol>
+          </div>
+          <div class="card" id="pv-results-card">
+            <h2>Результаты</h2>
+            <div id="pv-results" class="results"></div>
+            <details id="pv-report-box" hidden><summary>report.md</summary><div id="pv-report" class="report"></div></details>
+          </div>
+        </div>
+      </div>
+      <div class="logpane">
+        <div class="log-head">
+          <strong>Журнал</strong>
+          <select id="log-filter"><option value="">все проекты</option></select>
+          <button id="log-clear" class="link">очистить</button>
+        </div>
+        <pre id="log" class="log"></pre>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="dlg-new">
+    <form method="dialog">
+      <h2>Новый ролик</h2>
+      <label>Папка проекта<input id="new-name" required placeholder="my-reel"></label>
+      <label>Основа<select id="new-from"><option value="">шаблон (4 блока)</option></select></label>
+      <div class="row end"><button value="cancel" formnovalidate>Отмена</button><button id="new-ok" value="ok" class="primary">Создать</button></div>
+    </form>
+  </dialog>
+  <dialog id="dlg-draft">
+    <form method="dialog">
+      <h2>Черновик по теме</h2>
+      <label>Тема<textarea id="draft-topic" rows="3" required placeholder="почему в городах исчезают туалеты"></textarea></label>
+      <label>Папка проекта<input id="draft-name" placeholder="будет создана из темы"></label>
+      <div class="row end"><button value="cancel" formnovalidate>Отмена</button><button id="draft-ok" value="ok" class="primary">Написать</button></div>
+    </form>
+  </dialog>
+
+  <script src="fixture.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
