@@ -20,7 +20,7 @@ jobs:
   check:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Системные библиотеки Tauri
         run: |
           sudo apt-get update
@@ -50,7 +50,7 @@ jobs:
             name: windows
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Системные библиотеки Tauri (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -61,12 +61,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: app/desktop
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - name: Сборка установщиков (Tauri CLI из npm)
         run: npx --yes @tauri-apps/cli@2 build
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v7
         with:
           name: reels-desktop-${{ matrix.name }}
           if-no-files-found: error
