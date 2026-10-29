@@ -15,7 +15,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
-from . import __version__
+from . import __version__, hardware
 from .project import Project
 from .textcheck import check_script
 from .util import read_json, say, sha, write_json
@@ -376,6 +376,8 @@ def _run_one(r: Run, stage: Stage, edit: str | None) -> None:
         info = stage.do(*args) or {}
     except (FileNotFoundError, ValueError) as e:
         raise StageError(f"{label.strip()}: {e}") from e
+    finally:
+        hardware.after_stage(stage.name)  # gpu-lowvram: выгрузить модели, очистить видеопамять
     dt = time.time() - t0
     h = r.hashes[key] = stage.inputs(*args)  # этап мог сам создать часть входов (эталоны голоса Piper)
     r.state.done(key, h, {**info, "seconds": round(dt, 1)})
@@ -407,6 +409,7 @@ def run(project: Project, *, yes: bool = False, edits: list[str] | None = None, 
     if from_stage:
         r.force |= set(STAGES[STAGES.index(from_stage):])
     say(f"■ {project.slug}  ({project.dir})")
+    hardware.apply(project)  # профиль железа: потоки, устройство, запасные движки (docs/hardware.md)
     for name in STAGES:
         stage = STAGE_DEFS[name]
         if only and name != only:

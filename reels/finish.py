@@ -8,14 +8,21 @@ import tempfile
 from datetime import datetime
 from pathlib import Path
 
-from .util import ToolError, ff, run, write_json
+from .util import ToolError, ff, run, say, write_json
 
 # ожидания по умолчанию: docs/guide.md, «8. Постер и проверка»
 EXPECT = {"width": 1080, "height": 1920, "fps": 30, "lufs": -17.0, "lufs_tol": 2.5, "min_ratio": 0.98}
 
 
-def poster(src: Path, at: float, dst: Path) -> Path:
-    """Кадр с секунды at вшивается первым кадром (обложка на площадках); звук копируется как есть."""
+def poster(src: Path, at: float, dst: Path, codecs: list[tuple[str, list[str]]] | None = None) -> Path:
+    """Кадр с секунды at вшивается первым кадром (обложка на площадках); звук копируется как есть.
+
+    Видео перекодируется кодировщиком профиля железа (h264_nvenc / h264_videotoolbox / …); не сработал —
+    повтор на libx264. codecs — [(имя, аргументы ffmpeg)], по умолчанию hardware.video_codecs().
+    """
+    if codecs is None:
+        from . import hardware  # noqa: WPS433
+        codecs = hardware.video_codecs()
     src, dst = Path(src), Path(dst)
     dst.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
@@ -23,10 +30,17 @@ def poster(src: Path, at: float, dst: Path) -> Path:
         run([ff(), "-y", "-v", "error", "-ss", f"{at:.3f}", "-i", src, "-frames:v", "1", png])
         if not png.is_file():
             raise ToolError(f"не удалось взять кадр {at} с из {src}: ролик короче?")
-        run([ff(), "-y", "-v", "error", "-i", src, "-i", png, "-filter_complex",
-             "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]", "-map", "[v]", "-map", "0:a?",
-             "-c:v", "libx264", "-crf", "16", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-c:a", "copy",
-             "-movflags", "+faststart", dst])
+        head = [ff(), "-y", "-v", "error", "-i", src, "-i", png, "-filter_complex",
+                "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]", "-map", "[v]", "-map", "0:a?"]
+        for i, (name, vargs) in enumerate(codecs):
+            try:
+                run([*head, *vargs, "-c:a", "copy", "-movflags", "+faststart", dst])
+                break
+            except ToolError as e:
+                if i == len(codecs) - 1:
+                    raise
+                say(f"    ! кодировщик {name} не сработал ({str(e).strip().splitlines()[-1][:160]}) — "
+                    f"повторяю на {codecs[i + 1][0]}")
     return dst
 
 

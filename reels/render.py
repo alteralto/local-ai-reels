@@ -150,13 +150,20 @@ def snapshot(dir: Path, times: list[float], verbose: bool = False) -> list[Path]
     return pngs
 
 
-def render(dir: Path, out: Path, fps: int = 30, quality: str = "looks", verbose: bool = False) -> Path:
-    """Рендер композиции в mp4. out — любой путь (относительный — от текущей папки, не от проекта)."""
+def render(dir: Path, out: Path, fps: int = 30, quality: str = "looks", verbose: bool = False,
+           workers: int | None = None) -> Path:
+    """Рендер композиции в mp4. out — любой путь (относительный — от текущей папки, не от проекта).
+
+    workers — параллельные Chrome HyperFrames; None — по профилю железа (hardware.render_workers).
+    """
     dir, out = Path(dir).resolve(), Path(out).resolve()
     out.parent.mkdir(parents=True, exist_ok=True)
     if out.exists():
         out.unlink()
-    args = ["render", "-o", out, "--fps", fps, "--quality", quality]
+    if workers is None:
+        from . import hardware  # noqa: WPS433
+        workers = hardware.current(deep=False).render_workers
+    args = ["render", "-o", out, "--fps", fps, "--quality", quality, "--workers", workers]
     if not verbose:
         args.append("--quiet")
     log = hf(args, dir, verbose=verbose)

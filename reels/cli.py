@@ -203,6 +203,37 @@ def cmd_factory(a) -> int:
     return run(a)
 
 
+def cmd_doctor(a) -> int:
+    from .hardware import doctor_json, doctor_report
+    project = _projects([a.project])[0] if a.project else None
+    if a.json:
+        print(json.dumps(doctor_json(project), ensure_ascii=False, indent=1))
+    else:
+        print(doctor_report(project), end="")
+    return 0
+
+
+def _hw_flags(sp) -> None:
+    """--device/--profile/--threads/--allow-slow: ставят REELS_* до запуска конвейера (важнее reel.yaml)."""
+    from .project import HW_PROFILES
+    g = sp.add_argument_group("железо (docs/hardware.md)")
+    g.add_argument("--device", help="устройство torch: auto, cuda, cuda:N, mps, cpu (REELS_DEVICE)")
+    g.add_argument("--profile", choices=HW_PROFILES, help="профиль ускорения (REELS_PROFILE)")
+    g.add_argument("--threads", type=int, help="потоки CPU; 0 — по числу физических ядер (REELS_THREADS)")
+    g.add_argument("--allow-slow", action="store_true",
+                   help="F5/Qwen3/MusicGen на CPU без замены на Piper / без пропуска музыки (REELS_ALLOW_SLOW=1)")
+
+
+def _hw_env(a) -> None:
+    import os
+    for attr, var in (("device", "REELS_DEVICE"), ("profile", "REELS_PROFILE"), ("threads", "REELS_THREADS")):
+        v = getattr(a, attr, None)
+        if v is not None:
+            os.environ[var] = str(v)
+    if getattr(a, "allow_slow", False):
+        os.environ["REELS_ALLOW_SLOW"] = "1"
+
+
 # --- разбор аргументов --------------------------------------------------------------------------------------------
 def _run_flags(sp) -> None:
     sp.add_argument("--yes", "-y", action="store_true", help="автопилот: подтверждать контрольные точки")
@@ -210,6 +241,7 @@ def _run_flags(sp) -> None:
     sp.add_argument("--force", action="store_true", help="пересчитать все этапы, игнорируя кэш")
     sp.add_argument("--qa", choices=["error", "warn"], default="error",
                     help="ошибки автопроверки вёрстки: остановить (error, по умолчанию) или только предупредить")
+    _hw_flags(sp)
 
 
 def parser() -> argparse.ArgumentParser:
@@ -279,7 +311,13 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("--url", help="OpenAI-совместимый API (по умолчанию REELS_LLM_URL или http://localhost:1234/v1)")
     sp.add_argument("--model", help="модель (по умолчанию REELS_LLM_MODEL или первая из /models)")
     sp.add_argument("--jobs", type=int, default=1, help="параллельность; пока поддерживается только 1")
+    _hw_flags(sp)
     sp.set_defaults(fn=cmd_factory)
+
+    sp = sub.add_parser("doctor", help="проверить компьютер: видеокарта, профиль ускорения, чего не хватает")
+    sp.add_argument("project", nargs="?", help="проект: учесть его движки и раздел hardware")
+    sp.add_argument("--json", action="store_true", help="машиночитаемый вывод для приложений")
+    sp.set_defaults(fn=cmd_doctor)
     return ap
 
 
@@ -288,6 +326,7 @@ def main(argv: list[str] | None = None) -> int:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     a = parser().parse_args(argv)
+    _hw_env(a)
     try:
         return a.fn(a)
     except ConfigError as e:
