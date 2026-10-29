@@ -212,7 +212,15 @@ def _build_inputs(r: Run, edit: str):
     p = r.project
     cfg = {k: v for k, v in p.cfg.items() if k not in ("voice", "asr", "render", "poster")}
     return sha(r.hashes["align"], r.hashes["music"], p.timing_json, cfg, r.edits[edit], _code_hash(),
-               _tree_hash(p.dir / "scenes", p.dir / "assets"))
+               _tree_hash(p.dir / "scenes", p.dir / "assets"), *_brand_files(p))
+
+
+def _brand_files(p: Project) -> list[Path]:
+    """Логотипы brand (шапка и партнёры) — по содержимому: они могут лежать и вне assets/.
+    Картинки сцен (SceneOut.files) из assets/ уже учтены _tree_hash (он пропускает только .wav)."""
+    b = p.cfg.get("brand") or {}
+    srcs = [b.get("logo")] + [x.get("logo") for x in b.get("partners") or [] if isinstance(x, dict)]
+    return [p.path(str(x)) for x in srcs if x]
 
 
 def _build_do(r: Run, edit: str):

@@ -1,4 +1,4 @@
-"""Синтез коротких звуков оформления: вжух на склейке, щелчок, поп.
+"""Синтез коротких звуков оформления: вжух на склейке, щелчок, поп, стук, удар «БАХ», штамп, свист.
 
 Все функции пишут стерео WAV float32 (48 кГц), пик −6 дБ, и возвращают путь к файлу.
 """
@@ -67,4 +67,86 @@ def pop(path, sr: int = SR, dur: float = .12, seed: int = 5) -> Path:
     return _write(path, env * np.sin(phase) + .15 * air, sr, peak=.45)
 
 
-__all__ = ["whoosh", "click", "pop"]
+def _thump(n: int, sr: int, f0: float, f1: float, dec: float, tau: float = .02) -> np.ndarray:
+    """Низкий удар: синус с падением высоты f0→f1 и экспоненциальным спадом."""
+    t = np.arange(n) / sr
+    f = f1 + (f0 - f1) * np.exp(-t / tau)
+    return (1 - np.exp(-t / .0015)) * np.exp(-t / dec) * np.sin(2 * np.pi * np.cumsum(f) / sr)
+
+
+def _band(rng, n: int, sr: int, lo: float, hi: float) -> np.ndarray:
+    b, a = butter(2, [lo / (sr / 2), min(hi / (sr / 2), .99)], "band")
+    return lfilter(b, a, rng.standard_normal(n))
+
+
+def knock(path, sr: int = SR, seed: int = 11) -> Path:
+    """«Тук-тук»: два деревянных стука — короткий резонанс ~180 и ~620 Гц плюс щелчок по дереву."""
+    rng = np.random.default_rng(seed)
+    out = np.zeros(int(.5 * sr))
+    for t0, amp in ((0.0, 1.0), (0.2, .85)):
+        i, m = int(t0 * sr), int(.16 * sr)
+        t = np.arange(m) / sr
+        body = .8 * _thump(m, sr, 260, 170, .035) + .45 * np.sin(2 * np.pi * 620 * t) * np.exp(-t / .018)
+        tap = _band(rng, m, sr, 900, 3500) * np.exp(-t / .004) * .6
+        out[i:i + m] += amp * (body + tap)
+    return _write(path, out, sr, peak=.6)
+
+
+def bang(path, sr: int = SR, seed: int = 13) -> Path:
+    """«БАХ»: плотный низкий удар (90→45 Гц) и короткая вспышка шума с хвостом."""
+    rng = np.random.default_rng(seed)
+    n = int(.7 * sr)
+    t = np.arange(n) / sr
+    low = _thump(n, sr, 110, 45, .16, tau=.03)
+    b, a = butter(2, 4000 / (sr / 2))
+    burst = lfilter(b, a, rng.standard_normal(n)) * (np.exp(-t / .03) + .15 * np.exp(-t / .2))
+    x = np.tanh(1.6 * (low + .5 * burst))     # мягкое ограничение — «плотность» без перегруза
+    return _write(path, x, sr, peak=.7)
+
+
+def stamp(path, sr: int = SR, seed: int = 17) -> Path:
+    """Штамп: глухой удар (140→70 Гц) и шлепок бумаги — шум 1–5 кГц с очень быстрым спадом."""
+    rng = np.random.default_rng(seed)
+    n = int(.4 * sr)
+    t = np.arange(n) / sr
+    thud = _thump(n, sr, 140, 70, .06)
+    slap = _band(rng, n, sr, 1000, 5000) * np.exp(-t / .012)
+    return _write(path, thud + .55 * slap, sr, peak=.6)
+
+
+def swoosh(path, sr: int = SR, dur: float = .32, seed: int = 19) -> Path:
+    """Быстрый воздушный свист: шум, полоса которого скользит 600 Гц → 5 кГц, огибающая с пиком в конце."""
+    rng = np.random.default_rng(seed)
+    n = int(sr * dur)
+    t = np.arange(n) / sr
+    noise = rng.standard_normal(n)
+    x = np.zeros(n)
+    seg = 256
+    for k in range(0, n, seg):  # фильтр с меняющейся полосой — по кускам
+        c = 600 * (5000 / 600) ** (k / n)
+        b, a = butter(2, [c * .7 / (sr / 2), min(c * 1.4 / (sr / 2), .99)], "band")
+        x[k:k + seg] = lfilter(b, a, noise[max(0, k - 2048):k + seg])[-len(x[k:k + seg]):]
+    env = (t / dur) ** 1.5 * np.exp(-((t - .8 * dur) / (.25 * dur)) ** 2) + 1e-3
+    env *= np.minimum(1, (dur - t) / .02)
+    return _write(path, x * env, sr, peak=.5)
+
+
+# звуки для reel.yaml: sfx: [{at, sound, volume}]
+SOUNDS = {"knock": knock, "bang": bang, "pop": pop, "whoosh": whoosh, "stamp": stamp, "click": click,
+          "swoosh": swoosh}
+
+
+def duration(path) -> float:
+    """Длительность WAV, с."""
+    sr, x = wavfile.read(str(path))
+    return round(len(x) / sr, 3)
+
+
+def make(name: str, path) -> Path:
+    """Пишет звук по имени из SOUNDS; неизвестное имя — ValueError."""
+    if name not in SOUNDS:
+        raise ValueError(f"неизвестный звук «{name}». Есть: {', '.join(sorted(SOUNDS))}")
+    return SOUNDS[name](path)
+
+
+__all__ = ["whoosh", "click", "pop", "knock", "bang", "stamp", "swoosh", "SOUNDS", "make", "duration"]

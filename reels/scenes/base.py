@@ -36,6 +36,7 @@ class Theme:
     fonts_url: str = ("https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800"
                       "&family=IBM+Plex+Mono:wght@500;600&display=block")
     grid: bool = True          # чертёжная сетка 40 px на фоне сцен
+    grain: float = 0           # плёночное зерно поверх кадра: непрозрачность 0…1 (0 — без зерна)
 
 
 @dataclass
@@ -50,6 +51,8 @@ class SceneCtx:
     project_dir: Path          # для шаблона custom: файлы сцен лежат в проекте
     position: int = 0          # место блока в монтаже, с 0
     count: int = 1             # сколько блоков в монтаже
+    shot_start: float = 0.0    # кадр блока (scene: {shots: [...]}): начало кадра от начала блока, с
+    shot_end: float | None = None  # конец кадра от начала блока; None — конец блока
 
     @property
     def last(self) -> bool:
@@ -61,7 +64,10 @@ class SceneCtx:
         return f"#{self.uid}"
 
     def at(self, spec, default: float = 0.0) -> float:
-        """Время от начала блока по якорю (см. timing.anchor): "слово", "фраза@end+0.2", "40%", 1.5, None."""
+        """Время от начала блока по якорю (см. timing.anchor): "слово", "фраза@end+0.2", "40%", 1.5, None.
+        Без якоря (None) в кадре блока default отсчитывается от начала кадра (shot_start)."""
+        if spec is None or spec == "":
+            return self.shot_start + default
         return anchor(self.words, spec, default)
 
 
@@ -70,6 +76,9 @@ class SceneOut:
     html: str
     css: str = ""
     js: str = ""
+    # файлы, которые сцене нужны рядом с index.html: {имя в папке монтажа: исходный путь}
+    # (картинки, видео, SVG). Сцена ссылается на них по этому имени: <img src="b2-photo.png">.
+    files: dict = field(default_factory=dict)
 
 
 @dataclass
