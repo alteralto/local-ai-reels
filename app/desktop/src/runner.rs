@@ -194,7 +194,14 @@ impl Runner {
         let message = match outcome {
             Outcome::Ok | Outcome::Stopped | Outcome::Gate => outcome.text().to_string(),
             _ => {
-                let last = python::last_line(&tail);
+                // stdout и stderr читаются параллельно, порядок строк между ними не гарантирован:
+                // ошибку CLI (строку с «✗») ищем явно, а не берём последнюю строку хвоста
+                let last = tail
+                    .lines()
+                    .rev()
+                    .find(|l| l.trim_start().starts_with('✗'))
+                    .map(str::to_string)
+                    .unwrap_or_else(|| python::last_line(&tail));
                 if last.is_empty() {
                     outcome.text().to_string()
                 } else {
