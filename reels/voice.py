@@ -339,7 +339,8 @@ def synthesize(project: Project) -> dict:
         choice.update(engine=engine, requested=v["engine"], fallback=engine, fallback_reason=fallback)
     util.write_json(project.voice_dir / "choice.json", choice)
     if ok:
-        util.say(f"выбран дубль {best['file']} (сверка {best['ratio']})")
+        util.say(f"выбран дубль {best['file']} "
+                 f"({'без сверки' if best['ratio'] is None else 'сверка ' + str(best['ratio'])})")
     else:
         util.say(f"ВНИМАНИЕ: лучший дубль {best['file']} — сверка {best['ratio']} ниже {v['min_ratio']}: "
                  f"Whisper слышит «{best['heard']}». Поправьте ударения/текст или добавьте seeds.", err=True)

@@ -5,32 +5,46 @@
 
 ## Окружение разработчика
 
-Нужны Python 3.10+, Node.js 22+ и ffmpeg 6+ в PATH.
+Нужны Python 3.10+, Node.js 22+ и ffmpeg 6+ в PATH; для приложений — Rust stable.
 
 ```bash
 git clone https://github.com/alteralto/local-ai-reels && cd local-ai-reels
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
-pip install -e .                                      # конвейер без моделей
-pip install -e .[ml]                                  # + F5-TTS, RUAccent, faster-whisper, MusicGen (нужен GPU)
-pip install pytest
+pip install -e ".[dev]"                               # конвейер без моделей + pytest, ruff, pre-commit
+pip install -e ".[ml]"                                # по желанию: F5-TTS, RUAccent, faster-whisper, MusicGen
+pre-commit install                                    # ruff и проверки файлов перед коммитом
+python -m reels doctor                                # что за железо и чего не хватает
 ```
 
-Для работы над шаблонами и рендером GPU не нужен: примеры в `examples/` используют готовую озвучку из `example/`.
+Вместо ручной установки можно `bash install.sh` / `install.ps1` (см. README). Для работы над шаблонами и рендером
+GPU не нужен: `examples/povodok` и `examples/povodok-templates` используют готовую озвучку из `example/`.
 
 ```bash
 python -m reels run examples/povodok-templates --yes --edit linear
 python -m reels run examples/povodok-templates --only snapshot      # только кадры и автопроверка
 ```
 
-## Тесты
+## Проверки
 
 ```bash
-python -m pytest                       # быстрые тесты: без моделей, сети и рендера
-REELS_INTEGRATION=1 python -m pytest   # + интеграционные: сборка и рендер примеров (нужны Node.js и ffmpeg, минуты)
+ruff check .                                   # линтер (как в lint.yml)
+python -m pytest                               # быстрые тесты: без моделей, сети и рендера
+REELS_INTEGRATION=1 python -m pytest           # + интеграционные: сборка и рендер примеров (Node.js, ffmpeg, минуты)
+python tools/make_scenes_doc.py --check        # docs/scenes.md совпадает с кодом шаблонов (как в CI)
 ```
 
 Быстрые тесты должны проходить за секунды и не трогать сеть. Всё, что запускает HyperFrames, Chrome или модели,
 помечайте как интеграционное (пропуск без `REELS_INTEGRATION=1`).
+
+Rust — рабочее пространство `app/` (`reels-core`, `reels-app`) и отдельный пакет `app/desktop`:
+
+```bash
+(cd app && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace)
+(cd app/desktop && cargo clippy --all-targets -- -D warnings && cargo test)
+```
+
+Интерфейс настольного приложения можно смотреть без Rust: `app/desktop/dist/index.html` в браузере
+(подробно — [app/desktop/README.md](app/desktop/README.md)).
 
 ## Как добавить шаблон сцены
 
@@ -78,7 +92,7 @@ def badge(ctx: SceneCtx, p: dict) -> SceneOut:
 
 1. добавьте тест в `tests/` (рендер HTML/CSS/JS шаблона на примере из `SceneDoc`, проверка селекторов и `tl.`);
 2. прогоните пример с новой сценой до `snapshot` и посмотрите кадры — автопроверка вёрстки должна быть чистой;
-3. обновите [docs/scenes.md](docs/scenes.md).
+3. пересоберите каталог и галерею: `python tools/make_scenes_doc.py` и `python tools/make_gallery.py`.
 
 ## Стиль кода
 
@@ -95,9 +109,12 @@ def badge(ctx: SceneCtx, p: dict) -> SceneOut:
 ## Pull request
 
 - Одна тема — один PR; опишите, что и зачем, приложите кадр или GIF, если меняется картинка.
-- `python -m pytest` зелёный; для изменений рендера — ещё и `REELS_INTEGRATION=1`.
+- `ruff check .` и `python -m pytest` зелёные; для изменений рендера — ещё и `REELS_INTEGRATION=1`;
+  для `app/` — `cargo fmt`, `clippy` и `cargo test`.
 - Новое поведение — в [CHANGELOG.md](CHANGELOG.md), раздел «Unreleased».
 - Картинки README пересобираются одной командой: `python tools/make_media.py` (после
   `python -m reels run examples/povodok --yes`).
+- Релиз: `python tools/bump_version.py X.Y.Z` (версия в `pyproject.toml`, `reels/__init__.py` и раздел
+  CHANGELOG), затем тег `vX.Y.Z` — пакет соберёт и опубликует `release.yml`.
 
 Участвуя в проекте, вы соглашаетесь с [правилами поведения](CODE_OF_CONDUCT.md).

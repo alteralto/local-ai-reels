@@ -5,7 +5,7 @@
 #   docker build -t local-ai-reels .
 #   docker run --rm -v "$PWD:/work" local-ai-reels run examples/povodok-templates --yes
 #
-# Полный конвейер на видеокарте (F5-TTS, MusicGen) — Dockerfile.cuda.
+# Полный конвейер на видеокарте (F5-TTS, MusicGen) — пока на хосте: bash install.sh --gpu (GPU-образ в планах).
 # Docker Hub недоступен или упёрся в лимит — базовые образы с зеркала:
 #   docker build --build-arg PYTHON_IMAGE=mirror.gcr.io/library/python:3.12-slim-bookworm \
 #                --build-arg NODE_IMAGE=mirror.gcr.io/library/node:22-bookworm-slim -t local-ai-reels .
