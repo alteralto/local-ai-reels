@@ -1,0 +1,58 @@
+name: rust
+
+on:
+  push:
+    paths: ["app/**", ".github/workflows/rust.yml"]
+  pull_request:
+    paths: ["app/**", ".github/workflows/rust.yml"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+
+defaults:
+  run:
+    working-directory: app
+
+jobs:
+  check:
+    name: fmt · clippy · test (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app
+      - run: cargo fmt --all --check
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  build:
+    name: release (${{ matrix.os }})
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: app
+      - run: cargo build --release -p reels-app
+      - name: тесты ядра (без Unix-only сценариев)
+        if: matrix.os != 'ubuntu-latest'
+        run: cargo test -p reels-core
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reels-app-${{ runner.os }}
+          path: |
+            app/target/release/reels-app
+            app/target/release/reels-app.exe
+          if-no-files-found: error
