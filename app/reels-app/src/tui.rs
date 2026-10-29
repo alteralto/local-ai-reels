@@ -432,11 +432,7 @@ fn draw(f: &mut Frame, app: &mut App) {
             lines.push(Line::from(gates));
             for (edit, o) in &st.outputs {
                 if let Some(m) = &o.mp4 {
-                    lines.push(Line::raw(format!(
-                        "{:<10}{}",
-                        format!("{edit}"),
-                        m.display()
-                    )));
+                    lines.push(Line::raw(format!("{:<10}{}", edit, m.display())));
                 }
             }
         }

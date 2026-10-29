@@ -98,16 +98,19 @@ def vtt(items: list[tuple[float, float, str]]) -> str:
 def covers(mp4: Path, at: float, dst: Path, dst_4x5: Path) -> tuple[Path, Path]:
     """Кадр с секунды at: обложка 1080×1920 и кроп 4:5 (1080×1350), JPEG q=2. Кадра нет — берётся первый."""
     vf = (f"[0:v]scale={COVER_W}:{COVER_H}:force_original_aspect_ratio=increase,crop={COVER_W}:{COVER_H},"
-          f"setsar=1,split=2[a][b];[b]crop={COVER_W}:{FEED_H}:0:{FEED_Y}[c]")
-    for t in (max(at, 0.0), 0.0):
+          # JPEG — в полном диапазоне: ffmpeg 7+ иначе отказывается открывать кодировщик mjpeg
+          f"setsar=1,scale=out_range=full,format=yuvj420p,split=2[a][b];[b]crop={COVER_W}:{FEED_H}:0:{FEED_Y}[c]")
+    err = ""
+    for t in (max(at, 0.0), 0.0):  # кадра на этой секунде нет (за концом ролика) — берём первый
         for f in (dst, dst_4x5):
             f.unlink(missing_ok=True)
-        run([ff(), "-y", "-v", "error", "-ss", f"{t:.3f}", "-i", mp4, "-filter_complex", vf,
-             "-map", "[a]", "-frames:v", "1", "-q:v", "2", "-update", "1", dst,
-             "-map", "[c]", "-frames:v", "1", "-q:v", "2", "-update", "1", dst_4x5])
+        p = run([ff(), "-y", "-v", "error", "-ss", f"{t:.3f}", "-i", mp4, "-filter_complex", vf,
+                 "-map", "[a]", "-frames:v", "1", "-q:v", "2", "-update", "1", dst,
+                 "-map", "[c]", "-frames:v", "1", "-q:v", "2", "-update", "1", dst_4x5], check=False)
         if dst.is_file() and dst.stat().st_size and dst_4x5.is_file() and dst_4x5.stat().st_size:
             return dst, dst_4x5
-    raise ToolError(f"не удалось взять кадр {at} с из {mp4}: ролик пустой?")
+        err = (p.stderr or "")[-600:]
+    raise ToolError(f"не удалось взять кадр {at} с из {mp4}: ролик пустой?\n{err}")
 
 
 # --- текст поста ----------------------------------------------------------------

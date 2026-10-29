@@ -128,7 +128,7 @@ def contact_sheet(pngs: list[Path], out: Path, cols: int = 4, width: int = 270,
     def graph(with_text: bool) -> str:
         parts = []
         for k in range(n):
-            f = f"[{k}:v]scale={width}:-2,setsar=1"
+            f = f"[{k}:v]scale={width}:-2:out_range=full,setsar=1,format=yuvj420p"  # JPEG: полный диапазон
             if with_text and labels:
                 txt = str(labels[k]).replace("\\", "").replace(":", "\\:").replace("'", "")
                 f += (f",drawtext=text='{txt}':x=8:y=8:fontsize={max(14, width // 12)}:fontcolor=white"
