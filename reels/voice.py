@@ -1,4 +1,4 @@
-"""Озвучка: ударения (RUAccent), эталоны голоса (Piper), дубли (F5-TTS / Piper / готовый файл), отбор дубля.
+"""Озвучка: ударения (RUAccent), эталоны голоса (Piper), дубли (F5-TTS / Qwen3-TTS / Piper / готовый файл), отбор дубля.
 
 Всё пишется в project.voice_dir:
     accents.json   {"master": сценарий с «+», "ref": текст эталона с «+»}
@@ -56,10 +56,13 @@ def apply_accents(text: str, accents: dict) -> str:
 
 
 def accent(project: Project) -> Path:
-    """accents.json: для f5 — разметка RUAccent + ручные правки; для piper/file — текст как есть (Piper не читает «+»)."""
+    """accents.json: для f5 — разметка RUAccent + ручные правки; для piper/file — текст как есть (Piper не читает «+»).
+
+    qwen3 — как piper (Qwen3-TTS «+» не понимает), но с voice.qwen_keep_accents: true — как f5.
+    """
     v = project.cfg["voice"]
     master, ref = project.script, " ".join(str(v["ref_text"]).split())
-    if v["engine"] == "f5":
+    if v["engine"] == "f5" or (v["engine"] == "qwen3" and v.get("qwen_keep_accents")):
         acc = _ruaccent()
         master, ref = acc.process_all(master), acc.process_all(ref)
         master, ref = apply_accents(master, v.get("accents")), apply_accents(ref, v.get("accents"))
@@ -112,7 +115,7 @@ def _piper_tts(text: str, model: Path, out: Path) -> Path:
 
 
 def ensure_refs(project: Project) -> dict[str, Path]:
-    """Эталоны голосов для F5: файл из voice.ref; нет — Piper читает ref_text, + 0,45 с тишины, 24 кГц моно."""
+    """Эталоны голосов для F5 и Qwen3: файл из voice.ref; нет — Piper читает ref_text, + 0,45 с тишины, 24 кГц моно."""
     v = project.cfg["voice"]
     refs = {}
     for name in v["voices"]:
@@ -148,6 +151,73 @@ def _f5_model():
                  hf_cache_dir=str(m / "hf"))
 
 
+# --- Qwen3-TTS ----------------------------------------------------------------
+QWEN_INSTALL = ("нет Qwen3-TTS: pip install -U qwen-tts (Python 3.10+, PyTorch ставится отдельно под свою CUDA; "
+                "по желанию pip install -U flash-attn --no-build-isolation)")
+
+
+def _qwen_model(project: Project):
+    """Qwen3TTSModel (модель Base — клон голоса по эталону). voice.qwen_model — id на Hugging Face,
+    папка проекта или папка <TTS_MODELS>/<имя модели> (например, models/Qwen3-TTS-12Hz-1.7B-Base)."""
+    try:
+        import torch  # noqa: WPS433
+        from qwen_tts import Qwen3TTSModel  # noqa: WPS433
+    except ImportError as e:
+        raise util.ToolError(QWEN_INSTALL) from e
+    src = str(project.cfg["voice"]["qwen_model"])
+    for local in (project.path(src), Path(os.environ.get("TTS_MODELS", "models")) / Path(src).name):
+        if local is not None and local.is_dir():
+            src = str(local)
+            break
+    dev = util.device()
+    kw = {"device_map": "cuda:0" if dev == "cuda" else "cpu",
+          "dtype": torch.bfloat16 if dev == "cuda" else torch.float32}
+    if dev == "cuda":
+        try:
+            import flash_attn  # noqa: F401, WPS433
+            kw["attn_implementation"] = "flash_attention_2"
+        except ImportError:
+            pass
+    util.say(f"Qwen3-TTS: загружаю {src} ({dev})")
+    return Qwen3TTSModel.from_pretrained(src, **kw)
+
+
+def strip_stress(text: str) -> str:
+    """Убирает «+» ударений перед буквами (Qwen3-TTS их не понимает); «2+2» и «C++» не трогает."""
+    return re.sub(r"\+(?=[^\W\d_])", "", text)
+
+
+def _seed(seed: int | None) -> None:
+    """Повторяемый дубль: у Qwen3-TTS нет параметра seed, поэтому сеем random, numpy и torch (если он есть)."""
+    if seed is None:
+        return
+    import random  # noqa: WPS433
+
+    import numpy as np  # noqa: WPS433
+    random.seed(seed)
+    np.random.seed(seed % 2**32)
+    try:
+        import torch  # noqa: WPS433
+    except ImportError:
+        return
+    torch.manual_seed(seed)  # сеет и все видеокарты
+
+
+def _write_wav(path: Path, audio, sr: int) -> Path:
+    """float-сигнал −1…1 (моно) → WAV PCM 16 бит."""
+    import numpy as np  # noqa: WPS433
+    a = np.asarray(audio, dtype=np.float32).reshape(-1)
+    if not a.size:
+        raise util.ToolError(f"Qwen3-TTS вернул пустой звук для {path.name}")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(path), "wb") as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(int(sr))
+        wf.writeframes((np.clip(a, -1.0, 1.0) * 32767).astype("<i2").tobytes())
+    return path
+
+
 # --- дубли и отбор ------------------------------------------------------------
 def _take(project: Project, f: Path, voice: str | None, seed: int | None, verify: bool = True) -> dict:
     t = {"file": f.relative_to(project.voice_dir).as_posix(), "voice": voice, "seed": seed,
@@ -170,6 +240,28 @@ def _takes_f5(project: Project, takes_dir: Path) -> list[dict]:
             util.say(f"дубль F5: {name}, seed {seed}")
             tts.infer(str(refs[name]), acc["ref"], acc["master"], file_wave=str(f), speed=v["speed"],
                       nfe_step=v["nfe_step"], seed=seed, show_info=lambda *a, **k: None)
+            out.append(_take(project, f, name, seed))
+    return out
+
+
+def _takes_qwen3(project: Project, takes_dir: Path) -> list[dict]:
+    """Дубли Qwen3-TTS: эталон (ensure_refs) + его текст → клон голоса; голоса × seeds, как у F5."""
+    v = project.cfg["voice"]
+    acc, refs = _accents(project), ensure_refs(project)
+    text, ref_text = acc["master"], acc["ref"]
+    if not v.get("qwen_keep_accents"):
+        text, ref_text = strip_stress(text), strip_stress(ref_text)
+    model = _qwen_model(project)
+    out = []
+    for name in v["voices"]:
+        prompt = model.create_voice_clone_prompt(ref_audio=str(refs[name]), ref_text=ref_text,
+                                                 x_vector_only_mode=False)
+        for seed in v["seeds"]:
+            f = takes_dir / f"qwen3-{name}-{seed}.wav"
+            util.say(f"дубль Qwen3-TTS: {name}, seed {seed}")
+            _seed(seed)
+            wavs, sr = model.generate_voice_clone(text=text, language=v["qwen_language"], voice_clone_prompt=prompt)
+            _write_wav(f, wavs[0], sr)
             out.append(_take(project, f, name, seed))
     return out
 
@@ -212,7 +304,8 @@ def synthesize(project: Project) -> dict:
     if takes_dir.exists():
         shutil.rmtree(takes_dir)
     takes_dir.mkdir(parents=True)
-    takes = {"f5": _takes_f5, "piper": _takes_piper, "file": _takes_file}[v["engine"]](project, takes_dir)
+    engines = {"f5": _takes_f5, "qwen3": _takes_qwen3, "piper": _takes_piper, "file": _takes_file}
+    takes = engines[v["engine"]](project, takes_dir)
     takes = sorted(takes, key=lambda t: -(t["ratio"] if t["ratio"] is not None else 1.0))  # sorted устойчив
     util.write_json(project.voice_dir / "takes.json", takes)
     best = takes[0]
@@ -244,4 +337,4 @@ def timestamps(project: Project) -> Path:
     return util.write_json(project.words_json, words)
 
 
-__all__ = ["accent", "apply_accents", "ensure_refs", "piper_model", "synthesize", "timestamps"]
+__all__ = ["accent", "apply_accents", "ensure_refs", "piper_model", "strip_stress", "synthesize", "timestamps"]

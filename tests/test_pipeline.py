@@ -129,6 +129,8 @@ def test_only_and_edit_filter(proj):
     pipeline.run(load(proj), yes=True, interactive=False, edits=["linear"])
     assert CALLS["build"] == 1 and not load(proj).out_mp4("suspense").exists()
     pipeline.run(load(proj), yes=True, interactive=False, edits=["linear"], only="render")
+    assert CALLS["render"] == 1, "--only учитывает кэш"
+    pipeline.run(load(proj), yes=True, interactive=False, edits=["linear"], only="render", force=True)
     assert CALLS["render"] == 2 and CALLS["build"] == 1
 
 
@@ -139,14 +141,15 @@ def test_status_and_cli(proj, capsys):
     assert main(["status", str(proj)]) == 0
     out = capsys.readouterr().out
     assert "render@linear" in out and "done" in out
+    assert main(["status", "--json", str(proj), str(proj / "missing")]) == 0
+    js = json.loads(capsys.readouterr().out)
+    assert js[0]["gates"][0] == {"gate": "script", "stage": "check", "status": "approved"}
+    assert js[0]["outputs"]["linear"]["mp4"].endswith("reel-linear.mp4") and js[1]["error"]
 
 
 def test_new_from_example(tmp_path):
     dst = tmp_path / "copy"
-    examples = sorted((ROOT / "examples").glob("*/reel.yaml"))
-    if not examples:
-        pytest.skip("нет примеров")
-    assert main(["new", str(dst), "--from", str(examples[0].parent)]) == 0
+    assert main(["new", str(dst), "--from", str(ROOT / "examples/povodok-templates")]) == 0
     p = load(dst)
     for key in ("file", "words"):
         f = p.path(p.cfg["voice"].get(key))

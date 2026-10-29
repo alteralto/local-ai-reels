@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import shutil
 import sys
 import time
@@ -121,12 +122,22 @@ def cmd_batch(a) -> int:
 
 
 def cmd_status(a) -> int:
-    from .pipeline import status
+    from .pipeline import status, status_json
+    if a.json:  # контракт для приложений (Rust, десктоп): массив объектов, ошибка проекта — в поле error
+        out = []
+        for d in a.projects:
+            try:
+                out.append(status_json(load(_projects([d])[0])))
+            except ConfigError as e:
+                out.append({"dir": str(Path(d).resolve()), "slug": Path(d).name, "title": Path(d).name, "edits": {},
+                            "stages": [], "gates": [], "outputs": {}, "report": None, "error": str(e)})
+        print(json.dumps(out, ensure_ascii=False, indent=1))
+        return 0
     for d in _projects(a.projects):
         p = load(d)
         say(f"■ {p.slug}")
         for key, st, at in status(p):
-            mark = {"done": "✓", "approved": "✓", "stale": "~", "todo": "·", "waiting": "…"}[st]
+            mark = {"done": "✓", "approved": "✓", "stale": "~", "todo": "·", "waiting": "…", "n/a": "-"}[st]
             say(f"  {mark} {key:<22} {st:<9} {at}")
     return 0
 
@@ -186,6 +197,11 @@ def cmd_draft(a) -> int:
     return 0
 
 
+def cmd_factory(a) -> int:
+    from .factory import cmd_factory as run
+    return run(a)
+
+
 # --- разбор аргументов --------------------------------------------------------------------------------------------
 def _run_flags(sp) -> None:
     sp.add_argument("--yes", "-y", action="store_true", help="автопилот: подтверждать контрольные точки")
@@ -226,6 +242,7 @@ def parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("status", help="состояние этапов и контрольных точек")
     sp.add_argument("projects", nargs="+")
+    sp.add_argument("--json", action="store_true", help="машиночитаемый вывод для приложений")
     sp.set_defaults(fn=cmd_status)
 
     sp = sub.add_parser("approve", help="подтвердить контрольную точку")
@@ -250,6 +267,18 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("--limit", type=int, default=60)
     sp.add_argument("--theme", default="blueprint")
     sp.set_defaults(fn=cmd_draft)
+    sp = sub.add_parser("factory", help="конвейер по списку тем: черновик → ролики, сводка factory.md")
+    sp.add_argument("topics", help="файл тем: по теме на строку (факты после « | » или с отступом) или YAML")
+    sp.add_argument("-o", "--out", required=True, help="папка проектов; там же factory.json и factory.md")
+    sp.add_argument("--yes", "-y", action="store_true", help="автопилот: подтверждать контрольные точки")
+    sp.add_argument("--edit", "-e", action="append", help="только этот монтаж (можно несколько раз)")
+    sp.add_argument("--qa", choices=["error", "warn"], default="error",
+                    help="ошибки автопроверки вёрстки: остановить (error) или только предупредить")
+    sp.add_argument("--theme", help="тема для новых черновиков (по умолчанию blueprint; в YAML — своя у темы)")
+    sp.add_argument("--url", help="OpenAI-совместимый API (по умолчанию REELS_LLM_URL или http://localhost:1234/v1)")
+    sp.add_argument("--model", help="модель (по умолчанию REELS_LLM_MODEL или первая из /models)")
+    sp.add_argument("--jobs", type=int, default=1, help="параллельность; пока поддерживается только 1")
+    sp.set_defaults(fn=cmd_factory)
     return ap
 
 

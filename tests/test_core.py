@@ -46,7 +46,8 @@ def test_examples_load():
     for d in sorted((root / "examples").glob("*/")):
         p = load(d)
         assert p.total_words <= p.cfg["limit"]
-        assert p.script == " ".join(" ".join(b.split()) for b in BLOCKS)
+        if d.name.startswith("povodok"):  # озвучка из example/ — текст должен совпадать дословно
+            assert p.script == " ".join(" ".join(b.split()) for b in BLOCKS)
 
 
 def test_cuts_match_hand_made(example_words):

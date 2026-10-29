@@ -36,10 +36,10 @@ DEFAULTS: dict[str, Any] = {
     "cut_bias": 0.12,             # граница блока = середина паузы минус cut_bias (Whisper ставит начало слова поздно)
     "edits": {"linear": "1234"},  # монтажи: имя → порядок блоков
     "voice": {
-        "engine": "f5",           # f5 | piper | file
+        "engine": "f5",           # f5 | qwen3 | piper | file
         "voices": ["denis", "dmitri"],
         "seeds": [7, 11, 31],
-        "ref": "assets/ref-{voice}.wav",   # эталон голоса (для f5); нет файла — сгенерировать Piper
+        "ref": "assets/ref-{voice}.wav",   # эталон голоса (для f5 и qwen3); нет файла — сгенерировать Piper
         "ref_text": ("Утром на площади пусто: только голуби, лавочки и старый фонтан у входа в парк. "
                      "К обеду здесь соберутся туристы и уличные музыканты."),
         "piper_models": "models/piper",    # папка с ru_RU-<голос>-medium.onnx
@@ -49,6 +49,9 @@ DEFAULTS: dict[str, Any] = {
         "file": None,             # engine=file: готовая озвучка
         "words": None,            # engine=file: готовые таймкоды words.json (иначе распознаёт Whisper)
         "min_ratio": 0.98,        # дубль годен, если сверка Whisper не ниже
+        "qwen_model": "Qwen/Qwen3-TTS-12Hz-1.7B-Base",  # engine=qwen3: id на Hugging Face или папка с весами
+        "qwen_language": "Russian",  # engine=qwen3: язык синтеза (Russian, English, … или Auto)
+        "qwen_keep_accents": False,  # engine=qwen3: оставить «+» RUAccent в тексте (по умолчанию убираются)
     },
     "asr": {"model": "mobiuslabsgmbh/faster-whisper-large-v3-turbo", "device": "auto"},
     "music": {
@@ -64,7 +67,7 @@ DEFAULTS: dict[str, Any] = {
     "poster": "auto",             # auto | секунда | {edit: <монтаж>, at: <секунда>}
 }
 
-VOICE_ENGINES = {"f5", "piper", "file"}
+VOICE_ENGINES = {"f5", "qwen3", "piper", "file"}
 MUSIC_ENGINES = {"musicgen", "file", "none"}
 
 

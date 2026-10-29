@@ -392,8 +392,6 @@ def run(project: Project, *, yes: bool = False, edits: list[str] | None = None, 
         r.force = set(STAGES)
     if from_stage:
         r.force |= set(STAGES[STAGES.index(from_stage):])
-    if only:
-        r.force.add(only)
     say(f"■ {project.slug}  ({project.dir})")
     for name in STAGES:
         stage = STAGE_DEFS[name]
@@ -440,31 +438,60 @@ def _report(r: Run) -> None:
 
 
 def status(project: Project) -> list[tuple[str, str, str]]:
-    """Состояние этапов: [(этап, статус, подробности)] — статус done | stale | todo."""
+    """Состояние этапов: [(этап, статус, подробности)] — done | stale | todo; для точек — approved | waiting | todo | n/a."""
+    js = status_json(project)
+    return [(x["key"], x["status"], x["at"]) for x in js["stages"]] + \
+        [(f"gate:{g['gate']}", g["status"], "") for g in js["gates"]]
+
+
+def status_json(project: Project) -> dict:
+    """Состояние проекта для приложений (reels status --json): этапы, контрольные точки, готовые файлы."""
     st = State.load(project)
     r = Run(project, st, project.edits, interactive=False)
-    rows = []
+    stages, gates = [], []
     for name in STAGES:
         stage = STAGE_DEFS[name]
-        keys = [(f"{name}@{e}", (r, e)) for e in r.edits] if name in EDIT_STAGES else [(name, (r,))]
-        for key, args in keys:
+        keys = [(f"{name}@{e}", e, (r, e)) for e in r.edits] if name in EDIT_STAGES else [(name, None, (r,))]
+        done_all = True
+        for key, edit, args in keys:
             try:
                 h = stage.inputs(*args)
-            except Exception:  # noqa: BLE001
+            except Exception:  # noqa: BLE001 — входы ещё не готовы
                 h = None
             r.hashes[key] = h or ""
             prev = st.stages.get(key)
             if not prev:
-                rows.append((key, "todo", ""))
+                state = "todo"
             elif prev.get("hash") == h and all(Path(o).exists() for o in stage.outputs(*args)):
-                rows.append((key, "done", prev.get("at", "")))
+                state = "done"
             else:
-                rows.append((key, "stale", prev.get("at", "")))
+                state = "stale"
+            done_all &= state == "done"
+            stages.append({"key": key, "stage": name, "edit": edit, "status": state, "at": prev.get("at", "") if prev else ""})
         if name in EDIT_STAGES:
             _edit_hash(r, name)
-    for stage_name, gate in GATES.items():
-        rows.append((f"gate:{gate}", "approved" if gate in st.approved else "waiting", ""))
-    return rows
+        if name in GATES:
+            gate = GATES[name]
+            try:
+                g = stage.gate(r) if done_all else False
+            except Exception:  # noqa: BLE001
+                g = False
+            if g is None:
+                gs = "n/a"
+            elif g is False:
+                gs = "todo"
+            else:
+                gs = "approved" if st.approved.get(gate) == g[0] else "waiting"
+            gates.append({"gate": gate, "stage": name, "status": gs})
+    outputs = {}
+    for e in project.edits:
+        mp4 = project.out_mp4(e)
+        frames = project.out / f"{project.slug}-{e}-frames.jpg"
+        outputs[e] = {"mp4": str(mp4) if mp4.exists() else None, "frames": str(frames) if frames.exists() else None}
+    report = project.out / "report.md"
+    return {"dir": str(project.dir), "slug": project.slug, "title": project.cfg.get("title") or project.slug,
+            "edits": {k: "".join(map(str, v)) for k, v in project.edits.items()}, "stages": stages, "gates": gates,
+            "outputs": outputs, "report": str(report) if report.exists() else None, "error": None}
 
 
 def approve(project: Project, gate: str) -> str:
