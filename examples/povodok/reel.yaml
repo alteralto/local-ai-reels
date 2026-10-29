@@ -1,0 +1,35 @@
+# «Поводок» — точный перенос scripts/build.py на конвейер reels.
+# Все четыре сцены — custom: исходные SVG-карты и GSAP-анимация лежат в scenes/b1…b4 (.html/.css/.js).
+# Озвучка и музыка — готовые файлы из example/ (engine: file), таймкоды — example/voice/words.json.
+title: Поводок
+theme: blueprint
+blocks:
+  - name: Крючок
+    text: У каждого горожанина есть невидимый поводок, и длину ему отмерил город.
+    scene: {type: custom, html_file: scenes/b1.html, css_file: scenes/b1.css, js_file: scenes/b1.js}
+  - name: Факт
+    text: >-
+      Королевское общество здравоохранения Британии выяснило: каждый пятый выходит из дома реже,
+      чем хочет, — боится не найти туалет.
+    scene: {type: custom, html_file: scenes/b2.html, css_file: scenes/b2.css, js_file: scenes/b2.js}
+  - name: Поворот
+    text: >-
+      Мы меряем город километрами и станциями метро, а у двоих из пяти больных он кончается
+      у ближайшей уборной.
+    scene: {type: custom, html_file: scenes/b3.html, css_file: scenes/b3.css, js_file: scenes/b3.js}
+  - name: Панчлайн
+    text: "Генплан без туалетов — это карта с поводком: отправь тому, кто рисует ваш город."
+    scene: {type: custom, html_file: scenes/b4.html, css_file: scenes/b4.css, js_file: scenes/b4.js}
+source: "источник: RSPH, «Taking the P***: the decline of the great British public toilet», 2019"
+endcard: "Город кончается там,\n*где нет туалета.*"
+edits:
+  linear: "1234"
+  from-end: "4123"
+  suspense: "1324"
+voice:
+  engine: file
+  file: ../../example/voice/voice.wav
+  words: ../../example/voice/words.json
+music:
+  engine: file
+  file: ../../example/music/music.wav

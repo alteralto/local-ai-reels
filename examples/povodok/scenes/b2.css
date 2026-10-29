@@ -1,0 +1,5 @@
+{S} .stat { top:300px; font-size:220px; }
+{S} .people { position:absolute; left:120px; top:640px; width:840px; height:330px; overflow:visible; }
+{S} .people .fig { fill:var(--ink); }
+{S} .people .house { fill:none; stroke:var(--accent); stroke-width:7; stroke-dasharray:700; stroke-linejoin:round; }
+{S} .note { position:absolute; left:80px; right:80px; top:1060px; font-size:36px; line-height:1.4; }

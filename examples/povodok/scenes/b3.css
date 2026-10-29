@@ -1,0 +1,10 @@
+{S} .map { position:absolute; left:90px; width:900px; height:900px; overflow:visible; }
+{S} .map .grid line { stroke:var(--ink); stroke-opacity:.22; stroke-width:3; }
+{S} .map .wc rect { fill:var(--ink); }
+{S} .map .wc text { font:700 22px "IBM Plex Mono",monospace; fill:var(--bg); }
+{S} .m3 { top:300px; }
+{S} .m3 .metro { fill:none; stroke:var(--alt); stroke-width:12; stroke-dasharray:1000; stroke-linecap:round; }
+{S} .m3 .stn { fill:var(--ink); stroke:var(--alt); stroke-width:6; }
+{S} .m3 .dim { fill:var(--deep); }
+{S} .m3 .ring { fill:none; stroke:var(--accent); stroke-width:5; }
+{S} .b3 { top:1240px; font-size:84px; }

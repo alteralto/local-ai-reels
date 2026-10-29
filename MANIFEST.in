@@ -1,0 +1,15 @@
+# Состав sdist сверх того, что setuptools кладёт сам (пакет reels, pyproject.toml, README.md, LICENSE*/NOTICE*).
+include README.md README.en.md
+include LICENSE NOTICE.md CHANGELOG.md
+include SECURITY.md CONTRIBUTING.md CODE_OF_CONDUCT.md
+
+# данные пакета: те же маски, что [tool.setuptools.package-data] в pyproject.toml
+recursive-include reels/templates *.yaml
+recursive-include reels/prompts *.md
+recursive-include reels *.mjs
+graft reels/vendor
+
+global-exclude *.py[cod]
+
+# тесты завязаны на example/ и examples/ из репозитория — в sdist их не кладём
+prune tests

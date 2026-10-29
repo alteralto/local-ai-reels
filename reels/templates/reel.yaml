@@ -1,0 +1,66 @@
+# Новый ролик. Заполните блоки и запустите:  python -m reels run <папка>
+# Каталог сцен: python -m reels scenes.  Полная схема полей — reels/project.py (DEFAULTS).
+
+title: Мой ролик
+limit: 60                      # лимит слов на весь сценарий
+theme: blueprint               # blueprint | night | paper | mono  или  {base: blueprint, accent: "#ff6b5b"}
+
+# 4 самостоятельных блока: крючок → факт → поворот → панчлайн. Каждый понятен без соседних:
+# монтажи переставляют блоки, и любой может оказаться первым. Цифры и аббревиатуры — словами.
+blocks:
+  - name: Крючок
+    text: "Каждое утро вы тратите на выбор одежды больше времени, чем на завтрак."
+    scene:
+      type: headline
+      kicker: "утро · привычки"
+      lines: ["Больше,", "чем *завтрак*."]
+      at: ["выбор", "завтрак"]       # якоря: строка появляется, когда диктор говорит это слово
+  - name: Факт
+    text: "Опрос британского ритейлера показал: в среднем семнадцать минут в день уходит на поиск того, что надеть."
+    scene:
+      type: counter
+      kicker: "опрос · 2000 человек"
+      from: 0
+      to: 17
+      suffix: " мин"
+      label: "в день на выбор одежды"
+      at: "семнадцать"
+  - name: Поворот
+    text: "За год из этих минут складывается больше четырёх суток — целый отпуск перед шкафом."
+    scene:
+      type: stat
+      kicker: "в пересчёте на год"
+      value: "*4* суток"
+      label: "целый отпуск перед шкафом"
+      at: "четырёх"
+  - name: Панчлайн
+    text: "Капсульный гардероб возвращает эти дни: десять вещей, которые сочетаются друг с другом."
+    scene:
+      type: list
+      kicker: "что делать"
+      items:
+        - {text: "10 базовых вещей", at: "десять"}
+        - {text: "всё сочетается", at: "сочетаются"}
+      at: "капсульный"
+
+source: "источник: укажите исследование, отчёт или статью"
+endcard: "Минуты складываются\nв *дни*."
+
+edits:                          # монтажи из одной озвучки: имя → порядок блоков
+  linear: 1234
+  from-end: 4123
+
+voice:
+  engine: f5                    # f5 (GPU, клон голоса) | piper (CPU, черновик) | file (готовая озвучка)
+  voices: [denis, dmitri]       # эталоны assets/ref-<голос>.wav; нет файла — сгенерирует Piper
+  seeds: [7, 11, 31]
+  accents: {}                   # ручные правки ударений: {"замок": "зам+ок"}
+
+music:
+  engine: musicgen              # musicgen | file | none
+  prompts:
+    - "minimal thoughtful piano with soft synth pulse, calm tension, 80 bpm, no drums"
+    - "ambient cinematic underscore, soft piano motif, warm pad, slow, reflective"
+  volume: 0.24
+
+poster: auto                    # auto | секунда кадра-обложки

@@ -1,0 +1,34 @@
+name: Идея / Feature request
+description: Новый шаблон сцены, тема, движок или улучшение конвейера
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую задачу решаем
+      description: Что сейчас неудобно или невозможно сделать.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предложение
+      description: Как это могло бы выглядеть — например, параметры шаблона в reel.yaml или новая команда.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область
+      options: [шаблон сцены, тема оформления, озвучка, музыка и звук, субтитры, автопроверка, CLI и конвейер, reels draft, документация, другое]
+  - type: textarea
+    id: refs
+    attributes:
+      label: Примеры и ссылки
+      description: Ролики-референсы, кадры, наброски.
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Участие
+      options:
+        - label: Готов(а) прислать PR

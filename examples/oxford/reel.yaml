@@ -1,0 +1,51 @@
+# «Оксфорд старше ацтеков». Только шаблоны библиотеки, тема mono.
+# Озвучки в репозитории нет (голос, которым делались превью, без указанной лицензии — см. NOTICE.md).
+# Озвучить самим голосом Piper под CC0 (таймкоды — длительности фонем, Whisper не нужен):
+#   python tools/fetch_models.py --only piper
+#   python -m reels.align examples/oxford --model models/piper/ru_RU-dmitri-medium.onnx
+title: Оксфорд и ацтеки
+theme: mono
+blocks:
+  - name: Крючок
+    text: В Оксфорде учили студентов ещё до того, как появилась столица ацтеков.
+    scene:
+      type: headline
+      kicker: Оксфорд · ацтеки
+      lines: ["Оксфорд", "старше", "*ацтеков*."]
+      at: ["в оксфорде", "до того", "столица ацтеков"]
+  - name: Факт
+    text: Преподавание в Оксфорде известно уже с тысяча девяносто шестого года.
+    scene:
+      type: headline
+      kicker: University of Oxford · преподавание
+      lines: ["Учат", "*с 1096 года*."]
+      at: ["преподавание", "тысяча"]
+  - name: Поворот
+    text: Теночтитлан, столицу ацтеков, основали только в тысяча триста двадцать пятом году.
+    scene:
+      type: stat
+      kicker: столица ацтеков
+      value: "*1325*"
+      label: "основан Теночтитлан —\nна 229 лет позже"
+      at: тысяча триста
+  - name: Панчлайн
+    text: Империя ацтеков успела возникнуть и пасть, а Оксфорд учит до сих пор.
+    scene:
+      type: timeline
+      kicker: пока в Оксфорде учили
+      points:
+        - {label: "1428", text: возникла империя ацтеков, at: возникнуть}
+        - {label: "1521", text: империя *пала*, at: пасть}
+        - {label: "сегодня", text: Оксфорд *учит*, at: учит}
+source: "источник: University of Oxford, «Introduction and history»; Britannica, «Tenochtitlán»"
+endcard: "Университет\n*старше империи.*"
+edits:
+  linear: "1234"
+  from-end: "4123"
+voice:
+  engine: file
+  file: assets/narration.wav
+  words: assets/words.json
+music:
+  engine: file
+  file: ../../example/music/music.wav

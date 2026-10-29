@@ -1,0 +1,70 @@
+# «Поводок» только на шаблонах библиотеки — ролик из одного YAML, без своего HTML/JS.
+# Тот же текст и та же озвучка, что в examples/povodok (таймкоды — example/voice/words.json).
+# Анимация привязана к словам диктора: at: "каждый пятый" — начало фразы, "туалет@end" — конец слова.
+title: Поводок
+theme: blueprint
+blocks:
+  - name: Крючок
+    text: У каждого горожанина есть невидимый поводок, и длину ему отмерил город.
+    scene:
+      type: map
+      kicker: город · радиус свободы
+      title: ["Невидимый", "*поводок*."]
+      title_at: ["невидимый", "поводок"]
+      points:
+        - {x: 250, y: 250, label: WC}
+        - {x: 470, y: 430, label: я, accent: true}
+      radius: 290
+      radius_at: длину
+  - name: Факт
+    text: >-
+      Королевское общество здравоохранения Британии выяснило: каждый пятый выходит из дома реже,
+      чем хочет, — боится не найти туалет.
+    scene:
+      type: fraction
+      kicker: RSPH · Taking the P*** · май 2019
+      total: 5
+      highlight: 1
+      value: "*1* из 5"
+      label: "выходит из дома реже, чем хочет —\nбоится не найти туалет"
+      at: каждый пятый
+  - name: Поворот
+    text: >-
+      Мы меряем город километрами и станциями метро, а у двоих из пяти больных он кончается
+      у ближайшей уборной.
+    scene:
+      type: map
+      kicker: у людей с болезнями, требующими частого туалета, — 43 %
+      route: "M40 520 C 220 470, 330 380, 450 420 S 700 560, 860 380"
+      route_at: станциями
+      points:
+        - {x: 250, y: 250, label: WC}
+        - {x: 650, y: 300, label: WC}
+        - {x: 450, y: 650, label: WC}
+        - {x: 180, y: 720, label: WC}
+      at: километрами
+      radius: 130
+      dim: true
+      radius_at: двоих из пяти
+  - name: Панчлайн
+    text: "Генплан без туалетов — это карта с поводком: отправь тому, кто рисует ваш город."
+    scene:
+      type: headline
+      kicker: генплан · радиусы поводка
+      lines: ["Генплан", "без туалетов —", "*карта с поводком*."]
+      at: ["генплан", "без туалетов", "карта с поводком"]
+      cta: отправь тому, кто рисует ваш город
+      cta_at: отправь
+source: "источник: RSPH, «Taking the P***: the decline of the great British public toilet», 2019"
+endcard: "Город кончается там,\n*где нет туалета.*"
+edits:
+  linear: "1234"
+  from-end: "4123"
+  suspense: "1324"
+voice:
+  engine: file
+  file: ../../example/voice/voice.wav
+  words: ../../example/voice/words.json
+music:
+  engine: file
+  file: ../../example/music/music.wav

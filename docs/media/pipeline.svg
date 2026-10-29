@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 440" width="1200" height="440" font-family="-apple-system, 'Segoe UI', Helvetica, Arial, sans-serif">
+<defs><pattern id="g" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#e8f0ff" stroke-opacity=".07"/></pattern><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5L0 10z" fill="#e8f0ff"/></marker></defs>
+<rect width="1200" height="440" rx="18" fill="#123a7a"/><rect width="1200" height="440" rx="18" fill="url(#g)"/>
+<text x="37" y="50" fill="#e8f0ff" font-size="22" font-weight="700">reel.yaml → готовые ролики</text>
+<text x="1163" y="50" fill="#ffd23f" font-size="17" text-anchor="end" font-family="ui-monospace, Consolas, monospace">python -m reels run &lt;проект&gt;</text>
+<rect x="37" y="118" width="150" height="72" rx="10" fill="#0b2350" stroke="#ffd23f" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="112.0" y="149" fill="#ffd23f" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">reel.yaml</text>
+<text x="112.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">сценарий · сцены</text>
+<rect x="233" y="118" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="308.0" y="149" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">check</text>
+<text x="308.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">лимит слов, сцены</text>
+<line x1="191" y1="154.0" x2="229" y2="154.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<g transform="translate(250.0,80)"><rect width="116" height="26" rx="13" fill="#ffd23f"/><path d="M14 13l6-6 6 6-6 6z" fill="#123a7a"/><text x="66" y="18" fill="#123a7a" font-size="14" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">script</text></g>
+<rect x="429" y="118" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="504.0" y="149" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">accent</text>
+<text x="504.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">RUAccent</text>
+<line x1="387" y1="154.0" x2="425" y2="154.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<g transform="translate(446.0,80)"><rect width="116" height="26" rx="13" fill="#ffd23f"/><path d="M14 13l6-6 6 6-6 6z" fill="#123a7a"/><text x="66" y="18" fill="#123a7a" font-size="14" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">accents</text></g>
+<rect x="625" y="118" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="700.0" y="149" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">voice</text>
+<text x="700.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">F5-TTS · Whisper</text>
+<line x1="583" y1="154.0" x2="621" y2="154.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<g transform="translate(642.0,80)"><rect width="116" height="26" rx="13" fill="#ffd23f"/><path d="M14 13l6-6 6 6-6 6z" fill="#123a7a"/><text x="66" y="18" fill="#123a7a" font-size="14" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">take</text></g>
+<rect x="821" y="118" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="896.0" y="149" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">align</text>
+<text x="896.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">таймкоды слов</text>
+<line x1="779" y1="154.0" x2="817" y2="154.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<rect x="1017" y="118" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="1092.0" y="149" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">music</text>
+<text x="1092.0" y="172" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">MusicGen</text>
+<line x1="975" y1="154.0" x2="1013" y2="154.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<path d="M1092.0 194 V226.0 H112.0 V258" fill="none" stroke="#e8f0ff" stroke-width="2" stroke-linejoin="round" marker-end="url(#a)"/>
+<rect x="37" y="262" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="112.0" y="293" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">build</text>
+<text x="112.0" y="316" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">HTML/SVG + GSAP</text>
+<rect x="233" y="262" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="308.0" y="293" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">snapshot</text>
+<text x="308.0" y="316" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">кадры · QA вёрстки</text>
+<line x1="191" y1="298.0" x2="229" y2="298.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<g transform="translate(250.0,346)"><rect width="116" height="26" rx="13" fill="#ffd23f"/><path d="M14 13l6-6 6 6-6 6z" fill="#123a7a"/><text x="66" y="18" fill="#123a7a" font-size="14" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">frames</text></g>
+<rect x="429" y="262" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="504.0" y="293" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">render</text>
+<text x="504.0" y="316" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">HyperFrames</text>
+<line x1="387" y1="298.0" x2="425" y2="298.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<rect x="625" y="262" width="150" height="72" rx="10" fill="#1b4a94" stroke="#e8f0ff" stroke-width="2"/>
+<text x="700.0" y="293" fill="#e8f0ff" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">finish</text>
+<text x="700.0" y="316" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">постер · −18 LUFS</text>
+<line x1="583" y1="298.0" x2="621" y2="298.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<rect x="821" y="262" width="150" height="72" rx="10" fill="#0b2350" stroke="#ffd23f" stroke-width="2" stroke-dasharray="6 5"/>
+<text x="896.0" y="293" fill="#ffd23f" font-size="19" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">out/*.mp4</text>
+<text x="896.0" y="316" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">+ report.md</text>
+<line x1="779" y1="298.0" x2="817" y2="298.0" stroke="#e8f0ff" stroke-width="2" marker-end="url(#a)"/>
+<text x="504.0" y="364" fill="#e8f0ff" fill-opacity=".75" font-size="13.5" text-anchor="middle">× каждый монтаж</text>
+<g transform="translate(37,388)"><rect width="116" height="26" rx="13" fill="#ffd23f"/><path d="M14 13l6-6 6 6-6 6z" fill="#123a7a"/><text x="66" y="18" fill="#123a7a" font-size="14" font-weight="700" text-anchor="middle" font-family="ui-monospace, Consolas, monospace">gate</text></g>
+<text x="167" y="406" fill="#e8f0ff" font-size="15">контрольная точка: <tspan font-family="ui-monospace, Consolas, monospace" fill="#ffd23f">reels approve &lt;проект&gt; &lt;gate&gt;</tspan> или <tspan font-family="ui-monospace, Consolas, monospace" fill="#ffd23f">--yes</tspan></text>
+<text x="1163" y="406" fill="#e8f0ff" fill-opacity=".75" font-size="15" text-anchor="end">кэш: этап пропускается, если его входы не менялись</text>
+</svg>

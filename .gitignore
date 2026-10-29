@@ -8,3 +8,13 @@ node_modules/
 local-model-test/res-*/
 */gen/
 reel-*/
+build/
+out/
+.reels-state.json
+*.egg-info/
+.pytest_cache/
+tests/data/
+# озвучка новых примеров — голосом с неуказанной лицензией; своя: python -m reels.align examples/<имя> --model <голос>
+examples/venera/assets/
+examples/opyonok/assets/
+examples/oxford/assets/

@@ -1,0 +1,26 @@
+# Модели, кэши и результаты сборки в образ не попадают: модели монтируются томом
+.git
+.github
+.pytest_cache
+**/__pycache__
+**/*.pyc
+*.egg-info
+models/
+renders/
+snapshots/
+**/node_modules/
+**/.thumbnails/
+**/build/
+**/out/
+reel-*/
+**/gen/
+local-model-test/
+example/
+examples/
+docs/
+tests/
+scripts/
+.reels-state.json
+.env
+Dockerfile*
+docker-compose.yml
