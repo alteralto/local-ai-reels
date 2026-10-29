@@ -1,0 +1,57 @@
+# «Опёнок»: самое большое живое существо — гриб. Только шаблоны библиотеки, тема paper.
+# Озвучки в репозитории нет (голос, которым делались превью, без указанной лицензии — см. NOTICE.md).
+# Озвучить самим голосом Piper под CC0 (таймкоды — длительности фонем, Whisper не нужен):
+#   python tools/fetch_models.py --only piper
+#   python -m reels.align examples/opyonok --model models/piper/ru_RU-dmitri-medium.onnx
+title: Опёнок
+theme: paper
+blocks:
+  - name: Крючок
+    text: Самое большое живое существо на Земле — не кит и не секвойя, а гриб.
+    scene:
+      type: list
+      kicker: самое большое живое существо
+      title: "Кто больше всех?"
+      style: dot
+      items:
+        - {text: синий кит, at: кит}
+        - {text: секвойя, at: секвойя}
+        - {text: "*гриб*", at: гриб}
+  - name: Факт
+    text: В лесу Малур в Орегоне один опёнок занимает под землёй почти десять квадратных километров.
+    scene:
+      type: stat
+      kicker: Орегон · лес Малур
+      value: "*9,65* км²"
+      label: "один опёнок тёмный\nпод землёй"
+      at: опёнок
+  - name: Поворот
+    text: Грибница опёнка больше тысячи трёхсот футбольных полей, а сверху видны только обычные опята.
+    scene:
+      type: counter
+      kicker: площадь грибницы
+      to: 1350
+      prefix: "≈"
+      label: "футбольных полей —\nа сверху только опята"
+      at: тысячи
+      duration: 1.5
+  - name: Панчлайн
+    text: Возраст гриба — как минимум две тысячи четыреста лет, а может, и восемь с половиной тысяч.
+    scene:
+      type: timeline
+      kicker: возраст грибницы
+      points:
+        - {label: "2400 лет", text: оценка *снизу*, at: две тысячи}
+        - {label: "8650 лет", text: оценка *сверху*, at: восемь с половиной}
+source: "источник: Ferguson et al., Canadian Journal of Forest Research 33 (2003): 612–623"
+endcard: "Самый большой организм\n*растёт под ногами.*"
+edits:
+  linear: "1234"
+  from-end: "4123"
+voice:
+  engine: file
+  file: assets/narration.wav
+  words: assets/words.json
+music:
+  engine: file
+  file: ../../example/music/music.wav

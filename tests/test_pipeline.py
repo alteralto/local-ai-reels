@@ -156,3 +156,14 @@ def test_new_from_example(tmp_path):
         assert f is None or (f.exists() and f.is_relative_to(dst))
     assert main(["new", str(tmp_path / "blank")]) == 0
     assert load(tmp_path / "blank").blocks
+
+
+def test_new_from_own_text(tmp_path, capsys):
+    from reels.textcheck import check_script
+    txt = tmp_path / "t.txt"
+    txt.write_text("\n\n".join(BLOCKS), encoding="utf-8")
+    assert main(["new", str(tmp_path / "own"), "--text", str(txt), "--theme", "night"]) == 0
+    p = load(tmp_path / "own")
+    assert [b.text for b in p.blocks] == [" ".join(b.split()) for b in BLOCKS] and p.cfg["theme"] == "night"
+    assert [b.name for b in p.blocks] == ["Крючок", "Факт", "Поворот", "Панчлайн"]
+    assert not [i for i in check_script(p) if i.level == "error"], "якоря сцен — слова из текста блока"

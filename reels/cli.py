@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import shutil
 import sys
 import time
@@ -31,10 +32,61 @@ def _projects(paths: list[str]) -> list[Path]:
 
 
 # --- команды ------------------------------------------------------------------------------------------------------
+ROLES = ["Крючок", "Факт", "Поворот", "Панчлайн"]
+
+
+def text_project(paragraphs: list[str], theme: str = "blueprint") -> dict:
+    """reel.yaml из своего текста: по блоку на абзац, сцена headline из первых слов блока с якорями на них.
+    Для «Просто» в десктопе и для тех, кто не хочет подбирать сцены: всё на экране — из вашего текста."""
+    blocks = []
+    for i, text in enumerate(paragraphs):
+        words = text.split()
+        lines, cur = [], []
+        for w in words[:7]:  # заголовок — начало блока, не больше трёх строк по ~16 знаков
+            if cur and len(" ".join(cur + [w])) > 16:
+                lines.append(cur)
+                cur = []
+                if len(lines) == 3:
+                    break
+            cur.append(w)
+        if cur and len(lines) < 3:
+            lines.append(cur)
+        clean = [" ".join(x).rstrip(",;:—–-") for x in lines]
+        longest = max(range(len(clean)), key=lambda k: len(clean[k]))
+        clean[longest] = f"*{clean[longest]}*"
+        at = [re.sub(r"[^\w-]", "", x[0]) for x in lines]
+        name = ROLES[i] if len(paragraphs) == 4 else f"Блок {i + 1}"
+        blocks.append({"name": name, "text": text,
+                       "scene": {"type": "headline", "kicker": name.lower(), "lines": clean, "at": at}})
+    order = "".join(str(i + 1) for i in range(len(paragraphs)))
+    edits = {"linear": order}
+    if len(paragraphs) > 1:
+        edits["from-end"] = order[-1] + order[:-1]
+    title = re.split(r"[.!?:]", paragraphs[0])[0].strip()
+    if len(title) > 60:
+        title = title[:60].rsplit(" ", 1)[0] + "…"
+    return {"title": title, "theme": theme, "blocks": blocks, "edits": edits}
+
+
 def cmd_new(a) -> int:
     dst = Path(a.dir)
     if (dst / CONFIG_NAME).exists():
         raise ConfigError(f"{dst / CONFIG_NAME} уже есть")
+    if a.text:
+        raw = sys.stdin.read() if a.text == "-" else Path(a.text).read_text(encoding="utf-8")
+        paras = [" ".join(x.split()) for x in re.split(r"\n\s*\n", raw.strip()) if x.strip()]
+        if len(paras) == 1:  # абзацы без пустых строк — по строке на блок
+            paras = [" ".join(x.split()) for x in raw.strip().splitlines() if x.strip()]
+        if not 1 <= len(paras) <= 9:
+            raise ConfigError(f"--text: нужно от 1 до 9 абзацев, сейчас {len(paras)}")
+        dst.mkdir(parents=True, exist_ok=True)
+        cfg = text_project(paras, a.theme or "blueprint")
+        (dst / CONFIG_NAME).write_text(yaml.safe_dump(cfg, allow_unicode=True, sort_keys=False, width=120),
+                                       encoding="utf-8")
+        load(dst)  # сразу проверить, что получилось
+        say(f"создан {dst / CONFIG_NAME} из вашего текста ({len(paras)} блоков) — "
+            f"python -m reels run {dst}")
+        return 0
     dst.mkdir(parents=True, exist_ok=True)
     if not a.source:
         shutil.copy(PKG / "templates" / CONFIG_NAME, dst / CONFIG_NAME)
@@ -253,6 +305,8 @@ def parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("new", help="создать проект ролика")
     sp.add_argument("dir")
     sp.add_argument("--from", dest="source", help="проект-образец, например examples/povodok-templates")
+    sp.add_argument("--text", help="свой текст: файл (или - для stdin), абзац на блок; сцены строятся сами")
+    sp.add_argument("--theme", help="тема для --text: blueprint, night, paper, mono")
     sp.set_defaults(fn=cmd_new)
 
     sp = sub.add_parser("check", help="проверить сценарий: лимит слов, блоки, сцены, якоря")

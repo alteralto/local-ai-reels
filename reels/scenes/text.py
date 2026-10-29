@@ -120,8 +120,8 @@ def quote(ctx: SceneCtx, p: dict) -> SceneOut:
     dur = float(p.get("duration", min(2.5, .07 * len(words))))
     html = (f'<div class="qm">“</div><div class="qbox"><div class="qt">{" ".join(words)}</div>'
             + (f'<div class="qa mono">— {esc(p["author"])}</div>' if p.get("author") else "") + "</div>")
-    css = (f"{ctx.sel} .qm{{position:absolute;left:66px;top:{qt - 260}px;font-size:300px;font-weight:800;line-height:1;"
-           f"color:var(--accent);height:240px;overflow:hidden}}\n"
+    css = (f"{ctx.sel} .qm{{position:absolute;left:66px;top:{qt - 260}px;font-size:300px;font-weight:800;line-height:.8;"
+           f"color:var(--accent);height:240px}}\n"
            f"{ctx.sel} .qbox{{position:absolute;left:80px;right:80px;top:{qt}px}}\n"
            f"{ctx.sel} .qt{{font-size:{size}px;font-weight:800;line-height:1.15;letter-spacing:-.02em}}\n"
            f"{ctx.sel} .qt .w{{display:inline-block}}\n"

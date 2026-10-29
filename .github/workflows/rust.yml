@@ -49,7 +49,7 @@ jobs:
       - name: тесты ядра (без Unix-only сценариев)
         if: matrix.os != 'ubuntu-latest'
         run: cargo test -p reels-core
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: reels-app-${{ runner.os }}
           path: |

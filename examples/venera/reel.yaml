@@ -1,0 +1,56 @@
+# «Венера»: день длиннее года. Только шаблоны библиотеки, тема night.
+# Озвучки в репозитории нет (голос, которым делались превью, без указанной лицензии — см. NOTICE.md).
+# Озвучить самим голосом Piper под CC0 (таймкоды — длительности фонем, Whisper не нужен):
+#   python tools/fetch_models.py --only piper
+#   python -m reels.align examples/venera --model models/piper/ru_RU-dmitri-medium.onnx
+title: Венера
+theme: night
+blocks:
+  - name: Крючок
+    text: На Венере один день длиннее целого года. И это не метафора.
+    scene:
+      type: headline
+      kicker: Венера · сутки против года
+      lines: ["Один день", "длиннее", "*целого года*."]
+      at: ["один день", "длиннее", "целого года"]
+  - name: Факт
+    text: Один оборот вокруг своей оси Венера делает за двести сорок три земных дня.
+    scene:
+      type: counter
+      kicker: NASA · сутки Венеры
+      to: 243
+      label: "земных дня —\nодин оборот вокруг оси"
+      at: двести
+      duration: 1.6
+  - name: Поворот
+    text: Вокруг Солнца Венера облетает быстрее — всего за двести двадцать пять дней.
+    scene:
+      type: compare
+      kicker: в земных днях
+      title: Год *короче* суток
+      left: {label: сутки, value: "243", note: оборот вокруг оси}
+      right: {label: год, value: "225", note: оборот вокруг Солнца}
+      accent: right
+      at: вокруг солнца
+      right_at: двести двадцать пять
+  - name: Панчлайн
+    text: Венера ещё и вращается в обратную сторону, поэтому Солнце там встаёт на западе.
+    scene:
+      type: headline
+      kicker: вращение в обратную сторону
+      lines: ["Наоборот:", "солнце встаёт", "*на западе*."]
+      at: ["вращается", "солнце", "на западе"]
+      cta: отправь тому, кто вечно опаздывает
+      cta_at: на западе@end
+source: "источник: NASA, Venus Fact Sheet (NSSDCA)"
+endcard: "На Венере сутки\n*длиннее года.*"
+edits:
+  linear: "1234"
+  twist-first: "3124"
+voice:
+  engine: file
+  file: assets/narration.wav
+  words: assets/words.json
+music:
+  engine: file
+  file: ../../example/music/music.wav
