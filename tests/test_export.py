@@ -89,10 +89,20 @@ def test_export_package(proj, mp4):
     assert _size(res["cover_4x5"]) == (1080, 1350)
 
     txt = Path(res["text"]).read_text(encoding="utf-8")
-    assert txt.startswith("Невидимый поводок\n")
-    assert "Генплан без туалетов" in txt and "Источник: RSPH, 2019" in txt and "Длительность:" in txt
+    # первая строка — хук: первая фраза первого блока монтажа (ORDER начинается с блока 4)
+    assert txt.startswith("Генплан без туалетов — это карта с поводком: отправь тому, кто рисует ваш город.\n")
+    assert "👉 " in txt and "Источник: RSPH, 2019" in txt and "длительность 0:" in txt
     tags = re.findall(r"#\w+", txt)
     assert 1 <= len(tags) <= 5 and "#поводок" in tags and "#туалет" in tags
+
+
+def test_post_text_overrides(proj):
+    from reels.export import post_text
+    p, _ = proj
+    p.cfg["post"] = {"hook": "Что прячет городская кабинка?", "cta": "оцените ролики на портале", "tags": ["город", "#urbanism"]}
+    txt = post_text(p, [1, 2, 3, 4], 24.3)
+    assert txt.startswith("Что прячет городская кабинка?\n\n")
+    assert "👉 Оцените ролики на портале" in txt and "#город #urbanism" in txt
 
 
 def test_poster_beyond_end_falls_back(proj, mp4):

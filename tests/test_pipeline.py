@@ -72,7 +72,7 @@ def _fake_modules(monkeypatch):
     mod("render", lint=lambda d: {"errors": 0, "warnings": 0},
         snapshot=hit("snapshot", lambda d, times: [touch(d / "snapshots" / "f.png")]),
         render=hit("render", lambda d, out, fps, quality: touch(out)))
-    mod("qa", layout_check=lambda d, times: [], contact_sheet=lambda pngs, out: touch(out),
+    mod("qa", layout_check=lambda d, times, zones=None: [], PLATFORM_ZONES={}, contact_sheet=lambda pngs, out: touch(out),
         format_issues=lambda issues: "")
     mod("finish", poster=hit("finish", lambda src, at, dst: touch(dst)), check=lambda mp4, expect: {"ok": True},
         verify=lambda mp4, script, cfg: {"ratio": 1.0}, write_report=write_report)

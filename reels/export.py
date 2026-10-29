@@ -136,16 +136,42 @@ def _duration(project: Project, order: list[int], timing: dict) -> float:
         return tm.place(list(order), timing["cuts"], float(project.cfg["gap"]), float(project.cfg["tail"]))[1]
 
 
+CTA_WORDS = ("подпиш", "сохран", "отправ", "напиш", "заход", "оцен", "перех", "став", "поделит", "смотри",
+             "жми", "пиши", "делись", "забирай", "переходи")
+
+
+def _first_sentence(text: str) -> str:
+    m = re.match(r"(.+?[.!?…])(\s|$)", text.strip())
+    return (m.group(1) if m else text).strip()
+
+
 def post_text(project: Project, order: list[int], duration: float) -> str:
-    title = str(project.cfg.get("title") or "").strip() or project.slug
-    narration = " ".join(project.blocks[b - 1].text.strip() for b in order)
+    """Текст поста для Instagram / TikTok / Shorts. Первая строка — хук: до «ещё» видна только она.
+
+    Порядок: хук (post.hook или первая фраза первого блока монтажа) → коротко о чём ролик → призыв (post.cta,
+    иначе последняя фраза-призыв из озвучки, иначе «сохраните, чтобы не потерять») → источник → 3–5 хэштегов
+    (post.tags или самые частые длинные слова сценария). Можно задать всё вручную в reel.yaml, раздел post."""
+    post = project.cfg.get("post") or {}
+    blocks = [project.blocks[b - 1].text.strip() for b in order]
+    hook = str(post.get("hook") or _first_sentence(blocks[0]) if blocks else "").strip()
+    body = str(post.get("text") or " ".join(blocks[1:-1] if len(blocks) > 2 else blocks[1:])).strip()
+    cta = str(post.get("cta") or "").strip()
+    if not cta and blocks:
+        last = _first_sentence(blocks[-1].split(":")[-1]) if ":" in blocks[-1] else ""
+        cand = [s for s in re.split(r"(?<=[.!?…])\s+|:\s*", blocks[-1]) if any(w in s.lower() for w in CTA_WORDS)]
+        cta = (cand[-1] if cand else last).strip()
+    if not cta:
+        cta = "Сохраните, чтобы не потерять."
+    cta = cta[0].upper() + cta[1:] if cta else cta
     src = str(project.cfg.get("source") or "").strip()
     if src:
         src = src[0].upper() + src[1:] if src.lower().startswith("источник") else f"Источник: {src}"
-    tags = hashtags(project.script)
+    tags = post.get("tags") or hashtags(project.script)
+    tags = [t if str(t).startswith("#") else f"#{t}" for t in tags][:5]
     m, s = divmod(int(round(duration)), 60)
-    parts = [title, narration, src, " ".join(tags), f"Длительность: {m}:{s:02d}"]
-    return "\n\n".join(p for p in parts if p) + "\n"
+    parts = [hook, body, f"👉 {cta}", src, " ".join(tags)]
+    text = "\n\n".join(p for p in parts if p) + "\n"
+    return text + f"\n— длительность {m}:{s:02d}, 9:16, обложка — первый кадр\n"
 
 
 # --- главное ------------------------------------------------------------------

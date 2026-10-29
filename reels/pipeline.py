@@ -237,7 +237,7 @@ def _snapshot_do(r: Run, edit: str):
     p.out.mkdir(parents=True, exist_ok=True)
     shutil.copy(sheet, p.out / f"{p.slug}-{edit}-frames.jpg")
     try:
-        issues = qa.layout_check(d, times)
+        issues = qa.layout_check(d, times, zones=qa.PLATFORM_ZONES.get(p.cfg.get("platform", "instagram"), []))
     except Exception as e:  # noqa: BLE001 — автопроверка не должна ронять конвейер, если нет браузера
         say(f"    ! автопроверка вёрстки пропущена: {e}")
         issues = None

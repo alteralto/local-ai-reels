@@ -60,8 +60,23 @@ def _install_driver() -> None:
         env={"PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"}, timeout=600)
 
 
-def layout_check(dir: Path, times: list[float], timeout: float = 300) -> list[dict]:
-    """Проверка вёрстки index.html в моменты times. Возвращает [{t, kind, severity, text, rect, detail}]."""
+# Зоны кадра 1080×1920, которые закрывает интерфейс платформы (кнопки, подпись, ник). Текст там прочитают
+# хуже или не увидят — автопроверка предупреждает. (left, top, right, bottom, что там)
+PLATFORM_ZONES: dict[str, list[tuple]] = {
+    "instagram": [(0, 0, 1080, 110, "верх — заголовок Reels и камера"),
+                  (0, 1560, 1080, 1920, "низ — ник, подпись и музыка"),
+                  (950, 1080, 1080, 1560, "справа — лайк, комментарии, репост")],
+    "tiktok": [(0, 0, 1080, 130, "верх — вкладки"), (0, 1500, 1080, 1920, "низ — ник и подпись"),
+               (940, 900, 1080, 1500, "справа — кнопки")],
+    "shorts": [(0, 0, 1080, 120, "верх"), (0, 1540, 1080, 1920, "низ — заголовок и канал"),
+               (950, 1000, 1080, 1540, "справа — кнопки")],
+    "none": [],
+}
+
+
+def layout_check(dir: Path, times: list[float], timeout: float = 300, zones: list[tuple] | None = None) -> list[dict]:
+    """Проверка вёрстки index.html в моменты times. Возвращает [{t, kind, severity, text, rect, detail}].
+    zones — зоны интерфейса платформы (PLATFORM_ZONES[...]): текст в них — предупреждение."""
     html = (Path(dir) / "index.html").resolve()
     if not html.is_file():
         raise ToolError(f"нет {html}")
@@ -69,7 +84,8 @@ def layout_check(dir: Path, times: list[float], timeout: float = 300) -> list[di
     with tempfile.TemporaryDirectory() as tmp:
         arg = Path(tmp) / "args.json"
         arg.write_text(json.dumps({"html": str(html), "times": [float(t) for t in times], "browser": exe,
-                                   "width": 1080, "height": 1920, "capZone": CAPTIONS_ZONE}), encoding="utf-8")
+                                   "width": 1080, "height": 1920, "capZone": CAPTIONS_ZONE,
+                                   "zones": [list(z) for z in (zones or [])]}), encoding="utf-8")
         env = {**os.environ, "NODE_PATH": _node_path()}
         cmd = ["node", str(SCRIPT), str(arg)]
         for attempt in range(2):

@@ -22,6 +22,8 @@ function loadDriver() {
 // Код, который выполняется в странице: видимость сцен по data-start/data-duration, seek, замеры.
 function measure(o) {
   const { t, W, H, capTop } = o;
+  const zones = o.zones || [];
+  const hasCaps = !!document.querySelector(".cap2 .chunk");
   const EDGE = 24;
   for (const el of document.querySelectorAll(".clip")) {
     if (el.tagName === "AUDIO" || el.tagName === "VIDEO") continue;
@@ -126,9 +128,17 @@ function measure(o) {
       const who = a.id ? `#${a.id}` : `.${[...a.classList].join(".") || a.tagName.toLowerCase()}`;
       add("clipped", "error", x, `текст обрезан контейнером ${who} (overflow: hidden)`);
     }
-    // 5) сцена залезает в зону субтитров
-    if (!x.cap && b.b > capTop.top && b.t < capTop.bottom) {
+    // 5) сцена залезает в зону субтитров (только если субтитры есть)
+    if (hasCaps && !x.cap && b.b > capTop.top && b.t < capTop.bottom) {
       add("captions_zone", "error", x, `текст сцены ниже ${capTop.top} px — там субтитры`);
+    }
+    // 6) интерфейс платформы (Instagram и др.) закроет текст; шапка бренда стоит там намеренно
+    if (!x.el.closest("[class*=brand], [id*=brand]")) {
+      for (const [l, tp, r, bt, what] of zones) {
+        const z = { l, t: tp, r, b: bt };
+        const area = Math.max(1, (b.r - b.l) * (b.b - b.t));
+        if (inter(b, z) / area > 0.3) { add("platform_zone", "warning", x, `под интерфейсом платформы: ${what}`); break; }
+      }
     }
   }
 
@@ -198,7 +208,7 @@ async function main() {
                     detail: "в странице нет window.__timelines — скрипт сцены упал или GSAP не загрузился" + (pageErrors.length ? `: ${pageErrors[0]}` : "") });
     }
     for (const t of args.times) {
-      issues = issues.concat(await page.evaluate(measure, { t, W, H, capTop: args.capZone || { top: 1450, bottom: 1700 } }));
+      issues = issues.concat(await page.evaluate(measure, { t, W, H, capTop: args.capZone || { top: 1450, bottom: 1700 }, zones: args.zones || [] }));
     }
     process.stdout.write(JSON.stringify({ issues, pageErrors, driver: drv.kind }));
   } finally {
