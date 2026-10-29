@@ -110,7 +110,7 @@ blocks:
     scene: {type: fraction, total: 5, highlight: 1, value: "*1* из 5", at: "каждый пятый",
             label: "выходит из дома реже, чем хочет"}
   # …
-edits: {linear: "1234", from-end: "4123", suspense: "2134"}
+edits: {linear: "1234", from-end: "4123", suspense: "1324"}
 voice: {engine: f5, voices: [denis, dmitri]}
 music: {engine: musicgen}
 ```
@@ -155,7 +155,7 @@ reels draft "почему в городах исчезают обществен�
 <p align="center"><img src="docs/media/edits.gif" alt="Первые секунды трёх монтажей: linear, from-end, suspense"></p>
 
 Голос синтезируется один раз. Монтаж — это порядок блоков: `linear: "1234"`, `from-end: "4123"`,
-`suspense: "2134"`. Куски мастер-файла раскладываются по таймлайну (`data-media-start` у `<audio>`), сцены,
+`suspense: "1324"`. Куски мастер-файла раскладываются по таймлайну (`data-media-start` у `<audio>`), сцены,
 субтитры и переходы пересчитываются сами. Три версии ролика для A/B-теста стоят один синтез.
 
 ## Автопроверка

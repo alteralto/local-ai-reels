@@ -118,7 +118,7 @@ def test_build_linear(tmp_path):
     cuts = timing["cuts"]
     assert [float(a["data-media-start"]) for a in vo] == pytest.approx(cuts[:-1])
     assert sum(float(a["data-duration"]) for a in vo) == pytest.approx(cuts[-1] - cuts[0], abs=1e-3)
-    assert len([a for a in audio if a["src"] == "whoosh.wav"]) == 3
+    assert len([a for a in audio if a["src"] == "whoosh.wav"]) == 4  # три склейки + переход к карточке
     root = attrs(doc, "div", id="root")[0]
     total = float(root["data-duration"])
     assert total == pytest.approx(cuts[-1] + 3 * p.cfg["gap"] + p.cfg["tail"], abs=.01)
@@ -168,7 +168,7 @@ def test_order_swap_changes_layout(tmp_path):
     mb = {x["id"]: float(x["data-media-start"]) for x in attrs(b, "audio", src="voice.wav")}
     assert mb["vo2"] == pytest.approx(timing["cuts"][1]) and mb["vo1"] == 0
     ids = [x["id"] for x in attrs(b, "audio", src="whoosh.wav")]
-    assert ids == ["sfx-wh1", "sfx-wh3", "sfx-wh4"]
+    assert ids == ["sfx-wh1", "sfx-wh3", "sfx-wh4", "sfx-whend"]
 
 
 def test_music_and_no_endcard(tmp_path):
@@ -213,12 +213,14 @@ def test_snapshot_and_poster(tmp_path):
     order = [2, 1, 3, 4]
     pl, total = tm.place(order, timing["cuts"], p.cfg["gap"], p.cfg["tail"])
     ts = compose.snapshot_times(p, order, timing)
-    assert len(ts) == 5 and ts == sorted(ts)
-    for t, x in zip(ts, pl):
-        assert x.start + .5 * x.length <= t < x.start + x.length
+    assert len(ts) == 6 and ts == sorted(ts)  # по кадру на блок, карточка и обложка
+    assert round(compose.poster_time(p, order, timing), 1) in ts
+    for x in pl:  # у каждого блока есть кадр, когда содержимое уже появилось и уход ещё не начался
+        assert any(x.start + .5 * x.length <= t < x.start + x.length for t in ts)
     assert ts[-1] == round(total - p.cfg["tail"] / 2, 1)
     assert all(round(t, 1) == t for t in ts)
-    assert compose.poster_time(p, order, timing) == round(pl[0].length - .35, 1)
+    poster = compose.poster_time(p, order, timing)
+    assert pl[0].length - 1.0 < poster <= pl[0].length - .35  # конец крючка, не на проявлении фразы субтитров
     p.cfg["poster"] = 3.5
     assert compose.poster_time(p, order, timing) == 3.5
     p.cfg["poster"] = {"edit": "fact", "at": 2}

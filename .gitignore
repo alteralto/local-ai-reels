@@ -13,3 +13,4 @@ out/
 .reels-state.json
 *.egg-info/
 .pytest_cache/
+tests/data/

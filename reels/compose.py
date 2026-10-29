@@ -97,6 +97,10 @@ def chunks(words: list[dict], max_chars: int = 26, max_words: int = 5) -> list[l
             cur = tail
     if cur:
         out.append(cur)
+    if len(out) > 1:  # «город.» на 0,3 с отдельной фразой не успевают прочитать — клеим к предыдущей
+        last, prev = " ".join(x["w"] for x in out[-1]), " ".join(x["w"] for x in out[-2])
+        if len(last) < 10 and len(prev) + 1 + len(last) <= max_chars + 10 and len(out[-2]) + len(out[-1]) <= max_words:
+            out[-2:] = [out[-2] + out[-1]]
     return out
 
 
@@ -104,7 +108,10 @@ def captions_html(words: list[dict], max_chars: int = 26, max_words: int = 5) ->
     """HTML субтитров блока. words — слова блока, время от начала блока; data-s — секунды от начала блока."""
     html = []
     for ch in chunks(words, max_chars, max_words):
-        spans = " ".join(f'<span data-s="{w["s"]:.2f}">{esc(w["w"])}</span>' for w in ch)
+        # после предлога или союза — неразрывный пробел: «у» не останется в конце строки
+        spans = "".join(f'<span data-s="{w["s"]:.2f}">{esc(w["w"])}</span>'
+                        + ("" if j == len(ch) - 1 else ("\u00a0" if w["w"].lower() in WEAK else " "))
+                        for j, w in enumerate(ch))
         html.append(f'<div class="chunk" data-s="{ch[0]["s"]:.2f}">{spans}</div>')
     return "".join(html)
 
@@ -263,7 +270,8 @@ def build_edit(project: Project, edit: str, order: list[int], timing: dict) -> P
         b, uid = p.block, f"b{p.block}"
         block = project.blocks[b - 1]
         bw = tm.block_words(words, cuts, b)
-        ctx = SceneCtx(b, uid, p.start, p.length, bw, block.text, theme, project.dir)
+        ctx = SceneCtx(b, uid, p.start, p.length, bw, block.text, theme, project.dir,
+                       position=i, count=len(placements))
         out = scenes.render_scene(ctx, block.scene)
         outs.append((p, uid, out))
         last_open = i == len(placements) - 1 and not card       # без карточки последняя сцена держится до конца
@@ -289,9 +297,16 @@ def build_edit(project: Project, edit: str, order: list[int], timing: dict) -> P
             js = "/* JS сцены отключён: синтаксическая ошибка */"
         end = p.start + p.length
         last_open = i == len(outs) - 1 and not card
+        last = i == len(outs) - 1
+        # перед финальной карточкой сцена уходит к концу речи: карточка непрозрачна и закрыла бы уход
+        out_t = total if last_open else (end if last and card else end + gap)
         anim_js.append(
             f"  {{ const S='#{uid}', t={num(p.start)};\n    try {{\n{js}\n    }} catch (e) {{ console.error(\"сцена {uid}:\", e); }}\n"
-            f"    capAnim2(S, t, {num(end)}); outro(S, {num(total if last_open else end + gap)}); }}")
+            f"    capAnim2(S, t, {num(end)}); outro(S, {num(out_t)}); }}")
+    if card:
+        audio_html.append(
+            f'<audio id="sfx-whend" class="clip" src="whoosh.wav" data-start="{num(max(total - tail - WHOOSH_LEAD, 0))}" '
+            f'data-duration="{num(WHOOSH_DUR)}" data-volume="{num(WHOOSH_VOL)}" data-track-index="5"></audio>')
 
     mus = cfg.get("music") or {}
     has_music = mus.get("engine") != "none" and project.music_wav.exists()
@@ -379,7 +394,8 @@ def snapshot_times(project: Project, order: list[int], timing: dict) -> list[flo
     out = [round(p.start + max(.75 * p.length, p.length - .6), 1) for p in placements]
     if card:
         out.append(round(total - tail / 2, 1))
-    return out
+    out.append(round(poster_time(project, order, timing), 1))  # обложку проверяем тоже
+    return sorted(set(out))
 
 
 def poster_time(project: Project, order: list[int], timing: dict) -> float:
@@ -394,7 +410,14 @@ def poster_time(project: Project, order: list[int], timing: dict) -> float:
     placements, total, *_ = _layout(project, order, timing)
     if spec is None or spec == "auto":
         first = placements[0]
-        return round(max(first.start + first.length - POSTER_LEAD, .1), 1)
+        t = max(first.start + first.length - POSTER_LEAD, .1)
+        cap = project.cfg.get("captions") or {}
+        bw = tm.block_words(timing["words"], timing["cuts"], first.block)
+        for ch in chunks(bw, int(cap.get("max_chars", 26)), int(cap.get("max_words", 5))):
+            s = first.start + ch[0]["s"]
+            if s - .05 < t < s + .3:      # фраза только проявляется — берём кадр до неё
+                t = max(s - .1, .1)
+        return round(t, 2)
     return round(min(max(float(spec), 0.0), total), 2)
 
 

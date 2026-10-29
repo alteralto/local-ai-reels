@@ -29,6 +29,7 @@ def _big_lines(ctx: SceneCtx, lines: list[str], top: float, size: int, cls: str 
      "sub_at": "якорь подписи; по умолчанию после последней строки",
      "cta": "призыв в конце (моно, акцент, со стрелкой →); необязательно",
      "cta_at": "якорь призыва; по умолчанию «70%»",
+     "cta_always": "показывать призыв, даже если блок не последний в монтаже (по умолчанию — только в последнем)",
      "top": "верх заголовка, px; по умолчанию — по центру зоны 260…1450",
      "size": "наибольший кегль, px; по умолчанию 112 (длинные строки уменьшаются сами)"},
     {"kicker": "генплан · радиусы поводка", "lines": ["Генплан без туалетов —", "*карта с поводком*."],
@@ -40,6 +41,8 @@ def headline(ctx: SceneCtx, p: dict) -> SceneOut:
     size = min(fit(ln, float(p.get("size", 112))) for ln in lines)
     lh = round(size * 1.06)
     sub, cta = p.get("sub"), p.get("cta")
+    if cta and not ctx.last and not p.get("cta_always"):  # в монтаже «с конца» призыв в начале ролика неуместен
+        cta = None
     height = lh * len(lines) + (40 + 50 * len(as_lines(sub)) if sub else 0) + (110 if cta else 0)
     top = float(p["top"]) if p.get("top") is not None else max(260, round(820 - height / 2))
     html, css, y = _big_lines(ctx, lines, top, size)

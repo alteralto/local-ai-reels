@@ -48,6 +48,13 @@ class SceneCtx:
     text: str                  # текст диктора блока
     theme: Theme
     project_dir: Path          # для шаблона custom: файлы сцен лежат в проекте
+    position: int = 0          # место блока в монтаже, с 0
+    count: int = 1             # сколько блоков в монтаже
+
+    @property
+    def last(self) -> bool:
+        """Блок последний в монтаже: призыв к действию уместен только здесь."""
+        return self.position == self.count - 1
 
     @property
     def sel(self) -> str:

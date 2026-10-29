@@ -106,7 +106,7 @@ blocks:
     scene: {type: fraction, total: 5, highlight: 1, value: "*1* из 5", at: "каждый пятый",
             label: "выходит из дома реже, чем хочет"}
   # …
-edits: {linear: "1234", from-end: "4123", suspense: "2134"}
+edits: {linear: "1234", from-end: "4123", suspense: "1324"}
 voice: {engine: f5, voices: [denis, dmitri]}
 music: {engine: musicgen}
 ```
@@ -150,7 +150,7 @@ Parameters and examples: [docs/scenes.md](docs/scenes.md); in the terminal: `ree
 <p align="center"><img src="docs/media/edits.gif" alt="The first seconds of three edits: linear, from-end, suspense"></p>
 
 The voice is synthesized once. An edit is just the order of blocks: `linear: "1234"`, `from-end: "4123"`,
-`suspense: "2134"`. Pieces of the master file are laid out on the timeline (`data-media-start` on `<audio>`); scenes,
+`suspense: "1324"`. Pieces of the master file are laid out on the timeline (`data-media-start` on `<audio>`); scenes,
 captions and transitions follow automatically. Three versions for an A/B test cost one synthesis.
 
 ## Automated QA

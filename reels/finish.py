@@ -25,7 +25,7 @@ def poster(src: Path, at: float, dst: Path) -> Path:
             raise ToolError(f"не удалось взять кадр {at} с из {src}: ролик короче?")
         run([ff(), "-y", "-v", "error", "-i", src, "-i", png, "-filter_complex",
              "[0:v][1:v]overlay=0:0:enable='eq(n,0)'[v]", "-map", "[v]", "-map", "0:a?",
-             "-c:v", "libx264", "-crf", "16", "-preset", "medium", "-pix_fmt", "yuv420p", "-c:a", "copy",
+             "-c:v", "libx264", "-crf", "16", "-preset", "veryfast", "-pix_fmt", "yuv420p", "-c:a", "copy",
              "-movflags", "+faststart", dst])
     return dst
 

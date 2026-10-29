@@ -271,7 +271,7 @@ def make_frames(out: Path, video: Path, n: int = 8) -> None:
 # ---------------------------------------------------------------- terminal.gif
 SAMPLE_LOG = """\
 reels 0.2.0 · проект povodok · 4 блока · 59/60 слов · тема blueprint
-монтажи: linear 1234 · from-end 4123 · suspense 2134
+монтажи: linear 1234 · from-end 4123 · suspense 1324
 
 ✓ check      сценарий 59/60 слов, 4 сцены, источник указан        0.2 с
 ◆ script     подтверждено (--yes)
