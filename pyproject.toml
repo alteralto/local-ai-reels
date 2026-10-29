@@ -1,0 +1,44 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ai-reels"
+version = "0.2.0"
+description = "Конвейер вертикальных роликов 1080×1920 на локальных моделях: F5-TTS, Whisper, HyperFrames, MusicGen"
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+keywords = ["reels", "shorts", "tts", "f5-tts", "whisper", "hyperframes", "gsap", "video", "local-ai"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Multimedia :: Video",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+    "Natural Language :: Russian",
+]
+dependencies = ["pyyaml>=6", "numpy>=1.24", "scipy>=1.10"]
+
+[project.optional-dependencies]
+# озвучка и распознавание на видеокарте; PyTorch ставится отдельно под свою версию CUDA
+ml = ["f5-tts>=1.1", "ruaccent", "faster-whisper>=1.0", "transformers>=4.40", "accelerate"]
+asr = ["faster-whisper>=1.0"]
+piper = ["piper-tts"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+reels = "reels.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/alteralto/local-ai-reels"
+Issues = "https://github.com/alteralto/local-ai-reels/issues"
+
+[tool.setuptools.packages.find]
+include = ["reels*"]
+
+[tool.setuptools.package-data]
+reels = ["templates/*.yaml", "prompts/*.md", "*.mjs"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: нужны модели, браузер или сеть; запускаются при REELS_INTEGRATION=1"]

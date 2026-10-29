@@ -1,0 +1,52 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -e .[dev]
+      - run: python -m pytest -q
+      - run: python -m reels check examples/*/
+      - run: python -m reels scenes
+
+  example-reel:
+    # полный прогон примера без GPU: озвучка и музыка из example/, сборка, кадры, автопроверка, рендер, постер
+    runs-on: ubuntu-latest
+    needs: tests
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - run: pip install -e .
+      - name: reels run
+        env:
+          HYPERFRAMES_BROWSER_PATH: /usr/bin/google-chrome
+        run: python -m reels run examples/povodok-templates --yes --edit linear
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: povodok-templates
+          path: |
+            examples/povodok-templates/out/
+            examples/povodok-templates/build/edits/*/qa.json
+            examples/povodok-templates/build/edits/*/frames.jpg
