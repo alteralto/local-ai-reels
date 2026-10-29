@@ -216,3 +216,144 @@ def test_connection_error(tmp_path):
     with pytest.raises(ToolError, match="нет связи"):
         D.draft("тема", tmp_path, url="http://127.0.0.1:9/v1", model="m")
     assert base.REGISTRY is REGISTRY
+
+
+# --- формат Instagram: крючки A/B, планы, наклейки -----------------------------------------------------------
+@pytest.fixture
+def stickers():
+    """Поддельные наклейки (вместо настоящего шаблона stickers — тесты не зависят от его параметров)."""
+    @scene("stickers", SceneDoc("Наклейки: строки текста на плашках.", {"lines": "строки или {text, at}"},
+                                {"lines": [{"text": "Что прячет", "at": "что прячет"}, "кабинка?"]}))
+    def fake_stickers(ctx, p):
+        for ln in p["lines"]:
+            if isinstance(ln, dict):
+                ctx.at(ln.get("at"))
+        return SceneOut("<div></div>")
+
+
+def st(*lines, at=None):
+    shot = {"type": "stickers", "lines": list(lines)}
+    return shot | ({"at": at} if at else {})
+
+
+IG = {
+    "format": "question",
+    "title": "Что прячет кабинка",
+    "blocks": [
+        {"role": "hook", "pattern": "question", "name": "Крючок A", "text": "Что прячет обычная городская кабинка?",
+         "scene": {"shots": [st({"text": "Что прячет", "at": "что прячет"}, "*кабинка?*"),
+                             {"type": "t_title", "text": "WC", "at": "кабинка"}]},
+         "sfx": [{"at": "прячет", "sound": "knock"}]},
+        {"role": "alt-hook", "pattern": "number", "name": "Крючок B",
+         "text": "Каждый пятый горожанин сидит дома из-за туалета.",
+         "scene": {"shots": [st("Каждый *пятый*"), {"type": "t_title", "text": "1 из 5", "at": "сидит дома"}]}},
+        {"role": "alt-hook", "pattern": "stop", "name": "Крючок C", "text": "Стоп. Город без туалетов держит вас на поводке.",
+         "scene": {"shots": [st("Стоп."), st("Город на *поводке*", at="держит")]}},
+        {"role": "context", "name": "Контекст",
+         "text": "Общественный туалет кажется мелочью, но без него город сжимается до пары кварталов.",
+         "scene": {"shots": [st("Мелочь?"), st("Город", "в два квартала", at="город")]}},
+        {"role": "value", "name": "Факт",
+         "text": "Королевское общество здравоохранения выяснило: каждый пятый выходит из дома реже, чем хочет.",
+         "scene": {"shots": [st("RSPH · 2019"), {"type": "t_count", "value": 5,
+                                                  "items": [{"label": "дома", "at": "дома"}], "at": "каждый пятый"},
+                             st("1 из 5", at="реже")]}},
+        {"role": "value", "name": "Факт 2",
+         "text": "У людей с болезнями, требующими частого туалета, доля почти вдвое выше.",
+         "scene": {"shots": [st("Болезни"), st("*Вдвое* чаще", at="доля")]}},
+        {"role": "payoff", "name": "Развязка", "text": "Кабинка прячет свободу: без неё город кончается за углом.",
+         "scene": {"shots": [st("Кабинка прячет", "*свободу*"), st("Город — до угла", at="без неё")]}},
+        {"role": "cta", "name": "Призыв", "text": "Отправь тому, кто рисует ваш город.",
+         "scene": st("Отправь", "градостроителю")},
+    ],
+    "source": "RSPH, Taking the P, 2019",
+    "endcard": "Туалет — тоже *архитектура*",
+    "caption": "Что прячет обычная городская кабинка? Ответ — в конце.",
+    "hashtags": ["урбанистика", "#город", "туалеты"],
+    "music_prompts": ["minimal piano, 80 bpm"],
+}
+
+
+def ig_broken():
+    bad = json.loads(json.dumps(IG))
+    bad["blocks"][0]["text"] = "Привет! Сегодня расскажу про туалеты."
+    bad["blocks"][0]["scene"]["shots"][0]["lines"][0]["at"] = "кабинка"
+    bad["blocks"][3]["scene"]["shots"][1]["lines"] = ["Город сжимается до пары кварталов вокруг дома"]
+    bad["blocks"][7]["text"] = "Город для всех начинается с кабинки."
+    bad["blocks"][7]["scene"] = st("Город для всех")
+    return bad
+
+
+def test_ig_draft_hooks_shots_edits(llm, tmp_path, stickers):
+    s = llm(reply(IG))
+    path = D.draft("Что прячет городская кабинка", tmp_path / "p", url=s.url, model="m", format="auto", hooks=3)
+    prompt = s.requests[0]["messages"][0]["content"]
+    assert "### question — вопрос-загадка" in prompt and "### promo — промо продукта" in prompt
+    assert "3 разных крючка" in prompt and "### stickers" in prompt and "{{" not in prompt
+    text = path.read_text(encoding="utf-8")
+    assert text.startswith("# черновик от m, формат question, крючков 3")
+    data = yaml.safe_load(text)
+    assert list(data["edits"].values()) == ["145678", "245678", "345678"], "монтаж на каждый крючок"
+    assert data["captions"] == {"style": "none"}, "текст несут наклейки"
+    assert data["limit"] == 72, "озвучка одна на все крючки: лимит с запасом на запасные"
+    assert [b["role"] for b in data["blocks"]] == ["hook", "alt-hook", "alt-hook", "context", "value", "value",
+                                                   "payoff", "cta"]
+    assert data["blocks"][0]["sfx"] == [{"at": "прячет", "sound": "knock"}]
+    assert data["blocks"][4]["scene"]["shots"][1]["type"] == "t_count"
+    assert data["blocks"][7]["scene"]["type"] == "stickers", "один план — обычная сцена"
+    assert "pattern" not in data["blocks"][0] and "caption" not in data and "format" not in data
+    p = load(path.parent)
+    assert set(p.edits) == set(data["edits"]), "лишних монтажей (linear из DEFAULTS) нет"
+    assert list(p.edits.values())[1] == [2, 4, 5, 6, 7, 8] and p.blocks[1].role == "alt-hook"
+    assert p.blocks[0].shots and len(p.blocks[0].shots) == 2
+    cap = (path.parent / "caption.txt").read_text(encoding="utf-8")
+    assert cap.splitlines()[0].startswith("Что прячет") and cap.rstrip().endswith("#урбанистика #город #туалеты")
+    from reels.textcheck import check_script
+    assert not [i for i in check_script(p) if i.level == "error"]
+
+
+def test_ig_retry_with_creative_feedback(llm, tmp_path, stickers):
+    s = llm(reply(ig_broken()), reply(IG))
+    D.draft("тема", tmp_path, url=s.url, model="m", format="question", hooks=3)
+    assert len(s.requests) == 2
+    assert "Формат задан: **question" in s.requests[0]["messages"][0]["content"]
+    fix = s.requests[1]["messages"][2]["content"]
+    assert "медленное начало «привет»" in fix
+    assert "якорь lines[0].at: «кабинка»" in fix
+    assert "текст в кадре «Город сжимается до пары кварталов вокруг дома»" in fix
+    assert "нет призыва" in fix and "3 крючка(-ов) первыми" in fix
+
+
+def test_validate_reel_structure(tmp_path, stickers):
+    assert D.validate_reel(IG, tmp_path, format="auto", hooks=3) == []
+    two = json.loads(json.dumps(IG))
+    del two["blocks"][2]
+    probs = D.validate_reel(two, tmp_path, format="auto", hooks=3)
+    assert any("крючки: первыми идут 3" in p for p in probs)
+    assert D.validate_reel(two, tmp_path, hooks=2) == []
+    wrong = json.loads(json.dumps(IG))
+    wrong["blocks"][3], wrong["blocks"][6] = wrong["blocks"][6], wrong["blocks"][3]
+    assert any("тело ролика по формату question" in p for p in D.validate_reel(wrong, tmp_path, hooks=3))
+    nofmt = dict(IG, format="опера")
+    assert any("нет формата «опера»" in p for p in D.validate_reel(nofmt, tmp_path, format="auto", hooks=3))
+    static = json.loads(json.dumps(IG))
+    static["blocks"][4]["scene"] = st("1 из 5")
+    static["blocks"][4]["text"] += " Это значит, что город кончается у ближайшей уборной."
+    assert any("план 1" in p and "дольше 4" in p for p in D.validate_reel(static, tmp_path, hooks=3))
+
+
+def test_ig_downgrade_without_subset_edits(tmp_path, stickers):
+    data = D.reel_dict(IG, hooks=3, features={"shots": False, "subset_edits": False, "brand": False},
+                       brand={"name": "ГРАД"})
+    assert [b["role"] for b in data["blocks"]][:2] == ["hook", "context"] and len(data["blocks"]) == 6
+    assert data["edits"] == {"main": "123456"} and "brand" not in data
+    merged = D.reel_dict(IG, hooks=3, features={"shots": True, "subset_edits": True, "merges_edits": True})
+    assert merged["edits"] == {"linear": "145678", "hook-b": "245678", "hook-c": "345678"}
+    assert all("shots" not in b["scene"] for b in data["blocks"])
+    full = D.reel_dict(IG, hooks=3, brand={"name": "ГРАД"}, features={"shots": True, "subset_edits": True,
+                                                                       "brand": True})
+    assert full["brand"] == {"name": "ГРАД"}
+
+
+def test_unknown_format_fails_before_llm(tmp_path):
+    with pytest.raises(KeyError, match="нет формата"):
+        D.draft("тема", tmp_path, url="http://127.0.0.1:9/v1", model="m", format="опера")

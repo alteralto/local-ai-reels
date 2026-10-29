@@ -108,6 +108,13 @@ def video_info(f: Path) -> tuple[float, float, float | None]:
 
 
 # --- общая раскладка: заголовок-стикер, рамка, появление ------------------------------------------------
+def _span(ctx: SceneCtx) -> tuple[float, float]:
+    """(начало, конец) кадра от начала блока: весь блок или кадр блока (scene: {shots: [...]})."""
+    a = float(getattr(ctx, "shot_start", 0.0) or 0.0)
+    b = getattr(ctx, "shot_end", None)
+    return a, float(b) if b is not None else ctx.length
+
+
 def _clamp(v: float, lo: float, hi: float) -> float:
     return max(lo, min(hi, v))
 
@@ -122,7 +129,8 @@ def _title(ctx: SceneCtx, p: dict) -> tuple[str, str, str, float]:
     size = min(fit(x, float(p.get("title_size", 78)), width=880, k=.6, lo=36) for x in lines)
     lh = round(size * 1.28)
     for i, (ln, at) in enumerate(zip(lines, times(ctx, p.get("title_at"), len(lines), .2, .35))):
-        html += f'<div class="big stk tl{i}"><span>{rich(ln)}</span></div>'
+        inv = re.fullmatch(r"\*([^*]+)\*", ln.strip())   # строка целиком *в звёздочках* — плашка другого цвета
+        html += f'<div class="big stk{" inv" if inv else ""} tl{i}"><span>{rich(inv.group(1) if inv else ln)}</span></div>'
         css.append(f"{ctx.sel} .tl{i}{{top:{y:.0f}px;font-size:{size}px;height:{lh}px;"
                    f"left:{70 + (i % 2) * 34}px}}")
         js += reveal(f".tl{i}", at)
@@ -130,7 +138,9 @@ def _title(ctx: SceneCtx, p: dict) -> tuple[str, str, str, float]:
     css.append(f"{ctx.sel} .stk{{right:auto;padding:0 6px;transform:rotate(-2deg);transform-origin:0 50%}}\n"
                f"{ctx.sel} .stk span{{background:var(--accent);color:var(--deep);padding:.06em .22em .1em;"
                f"line-height:1.1}}\n"
-               f"{ctx.sel} .stk em{{color:var(--accent);background:var(--deep);padding:0 .12em}}")
+               f"{ctx.sel} .stk.inv span{{background:var(--ink)}}\n"
+               f"{ctx.sel} .stk em{{color:inherit;text-decoration:underline;text-decoration-thickness:.1em;"
+               f"text-underline-offset:.1em}}")
     return html, "\n".join(css), js, y + 30
 
 
@@ -159,8 +169,8 @@ def _frame_css(ctx: SceneCtx, frame: str, x: float, y: float, w: float, h: float
     css = [f"{s} .med{{position:absolute;left:{x - pad:.0f}px;top:{y - pad:.0f}px;width:{w + 2 * pad:.0f}px;"
            f"height:{h + 2 * pad:.0f}px;padding:{pad}px}}",
            f"{s} .vp{{position:relative;width:{w:.0f}px;height:{h:.0f}px;overflow:hidden}}",
-           f"{s} .shot{{position:absolute;left:0;top:0;transform-origin:0 0}}",
-           f"{s} .shot img,{s} .shot video{{display:block}}"]
+           f"{s} .cam{{position:absolute;left:0;top:0;transform-origin:0 0}}",
+           f"{s} .cam img,{s} .cam video{{display:block}}"]
     if frame == "card":
         css += [f"{s} .med{{background:#fff;border-radius:22px;box-shadow:0 36px 90px rgba(0,0,0,.5)}}",
                 f"{s} .vp{{border-radius:22px;background:#fff}}"]
@@ -247,9 +257,9 @@ def image(ctx: SceneCtx, p: dict) -> SceneOut:
     else:
         x, y, w, h = _box(p, frame, ih / iw, top)
     t0 = ctx.at(p.get("at"), .15)
-    span = max(1.0, ctx.length + .6 - t0)               # движение камеры — до конца блока (и чуть дальше склейки)
-    img_css = f"{ctx.sel} .shot{{width:{w:.0f}px;height:{h:.0f}px}}\n" \
-              f"{ctx.sel} .shot img{{width:100%;height:100%;object-fit:{fit_}}}"
+    span = max(1.0, _span(ctx)[1] + .6 - t0)               # движение камеры — до конца блока (и чуть дальше склейки)
+    img_css = f"{ctx.sel} .cam{{width:{w:.0f}px;height:{h:.0f}px}}\n" \
+              f"{ctx.sel} .cam img{{width:100%;height:100%;object-fit:{fit_}}}"
     move = ""
     if p.get("kenburns"):
         kb = p["kenburns"]
@@ -261,15 +271,15 @@ def image(ctx: SceneCtx, p: dict) -> SceneOut:
             s = _clamp(s, 1, 4)
             return (_clamp(w / 2 - s * w * fx / 100, w - s * w, 0), _clamp(h / 2 - s * h * fy / 100, h - s * h, 0), s)
         (ax, ay, as_), (bx, by, bs) = cam(*a), cam(*b)
-        img_css += f"\n{ctx.sel} .shot{{transform:translate({ax:.1f}px,{ay:.1f}px) scale({num(as_)})}}"
-        move = (f'tl.fromTo(S+" .shot",{{x:{num(ax)},y:{num(ay)},scale:{num(as_)}}},{{x:{num(bx)},y:{num(by)},'
+        img_css += f"\n{ctx.sel} .cam{{transform:translate({ax:.1f}px,{ay:.1f}px) scale({num(as_)})}}"
+        move = (f'tl.fromTo(S+" .cam",{{x:{num(ax)},y:{num(ay)},scale:{num(as_)}}},{{x:{num(bx)},y:{num(by)},'
                 f'scale:{num(bs)},duration:{num(span)},ease:"sine.inOut"}},{T(t0)});\n')
     elif p.get("zoom"):
         z0, z1 = _pair(p["zoom"], "zoom", 2)
-        img_css += f"\n{ctx.sel} .shot{{transform-origin:50% 50%}}"
-        move = (f'tl.fromTo(S+" .shot",{{scale:{num(_clamp(z0, .5, 4))}}},{{scale:{num(_clamp(z1, .5, 4))},'
+        img_css += f"\n{ctx.sel} .cam{{transform-origin:50% 50%}}"
+        move = (f'tl.fromTo(S+" .cam",{{scale:{num(_clamp(z0, .5, 4))}}},{{scale:{num(_clamp(z1, .5, 4))},'
                 f'duration:{num(span)},ease:"none"}},{T(t0)});\n')
-    html += _frame_html(frame, f'<div class="shot"><img src="{esc(name)}" alt=""></div>')
+    html += _frame_html(frame, f'<div class="cam"><img src="{esc(name)}" alt=""></div>')
     css = "\n".join(x for x in (css, _frame_css(ctx, frame, x, y, w, h), img_css) if x)
     js += _enter_js(str(p.get("enter") or "fade"), t0) + move
     return SceneOut(html, css, js, {name: f})
@@ -302,11 +312,11 @@ def _region(v, iw: float, ih: float, name: str) -> tuple[float, float, float, fl
      "kicker": "надзаголовок; необязательно"},
     {"src": "app/desktop/screenshot.png", "title": ["Один клик —", "*ролик готов*"], "title_at": ["клик", "готов"],
      "h": 860,
-     "focus": [{"at": "этапы", "region": [300, 125, 1050, 60]},
-               {"at": "дубли", "region": [310, 190, 1030, 300]},
-               {"at": "подтвердить", "region": [310, 400, 440, 100], "zoom": 2}],
+     "focus": [{"at": "этапы", "region": [300, 120, 600, 70], "zoom": 1.6},
+               {"at": "дубли", "region": [310, 190, 560, 300], "zoom": 1.6},
+               {"at": "подтвердить", "region": [320, 430, 420, 70], "zoom": 2.4}],
      "cursor": [{"at": "дубли", "x": 1260, "y": 333}, {"at": "подтвердить", "x": 445, "y": 465, "click": True}],
-     "highlight": [{"at": "дубли", "region": [326, 264, 990, 46], "until": "подтвердить"}]}))
+     "highlight": [{"at": "дубли", "region": [326, 264, 990, 46], "until": "подтвердить", "dim": True}]}))
 def screen(ctx: SceneCtx, p: dict) -> SceneOut:
     f, name = _src(ctx, p, IMAGE_EXT)
     iw, ih = map(float, image_size(f))
@@ -331,13 +341,14 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
 
     # начало: верх скриншота, по центру по горизонтали
     cur_cam = cam((0, 0, iw, min(ih, vh / s0)), 1)
-    shot_css = (f"{ctx.sel} .shot{{width:{iw:.0f}px;height:{ih:.0f}px;"
+    shot_css = (f"{ctx.sel} .cam{{width:{iw:.0f}px;height:{ih:.0f}px;"
                 f"transform:translate({cur_cam[0]:.1f}px,{cur_cam[1]:.1f}px) scale({num(cur_cam[2])})}}\n"
-                f"{ctx.sel} .shot img{{width:{iw:.0f}px;height:{ih:.0f}px}}")
+                f"{ctx.sel} .cam img{{width:{iw:.0f}px;height:{ih:.0f}px}}")
     t0 = ctx.at(p.get("at"), .15)
     move = ""
     steps = list(p.get("focus") or [])
-    stimes = [ctx.at(st.get("at"), t0 + .8 + i) for i, st in enumerate(steps)]
+    sh = _span(ctx)[0]                                  # ctx.at(None, d) сам прибавляет начало кадра
+    stimes = [ctx.at(st.get("at"), t0 - sh + .8 + i) for i, st in enumerate(steps)]
     zooms: list[tuple[float, float, float]] = []      # (время, длительность, зум) — для курсора
     for i, (st, a) in enumerate(zip(steps, stimes)):
         if "region" not in st:
@@ -347,13 +358,13 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
         if i + 1 < len(stimes):
             d = min(d, max(.25, stimes[i + 1] - a))
         a = max(a, t0 + .3)
-        move += (f'tl.fromTo(S+" .shot",{{x:{num(cur_cam[0])},y:{num(cur_cam[1])},scale:{num(cur_cam[2])}}},'
+        move += (f'tl.fromTo(S+" .cam",{{x:{num(cur_cam[0])},y:{num(cur_cam[1])},scale:{num(cur_cam[2])}}},'
                  f'{{x:{num(nxt[0])},y:{num(nxt[1])},scale:{num(nxt[2])},duration:{num(d)},ease:"power2.inOut"}},'
                  f'{T(a)});\n')
         zooms.append((a, d, nxt[3]))
         cur_cam = nxt
 
-    over = ""                                            # курсор, клики и рамки — внутри .shot, в пикселях скриншота
+    over = ""                                            # курсор, клики и рамки — внутри .cam, в пикселях скриншота
     over_css = []
     k = 1 / s0                                           # 1 px экрана при зуме 1 в пикселях скриншота
     for i, hl in enumerate(p.get("highlight") or []):
@@ -362,11 +373,11 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
         shade = f";box-shadow:0 0 0 {max(iw, ih) * 2:.0f}px rgba(0,0,0,.42)" if hl.get("dim") else ""
         over_css.append(f"{ctx.sel} .hl{i}{{left:{rx - 6 * k:.0f}px;top:{ry - 6 * k:.0f}px;width:{rw + 12 * k:.0f}px;"
                         f"height:{rh + 12 * k:.0f}px{shade}}}")
-        ha = ctx.at(hl.get("at"), t0 + 1)
+        ha = ctx.at(hl.get("at"), t0 - sh + 1)
         move += (f'tl.fromTo(S+" .hl{i}",{{opacity:0,scale:1.06}},{{opacity:1,scale:1,duration:.35,'
                  f'ease:"power2.out"}},{T(ha)});\n')
         if hl.get("until") is not None:
-            move += f'tl.to(S+" .hl{i}",{{opacity:0,duration:.3}},{T(max(ha + .4, ctx.at(hl.get("until"), ha + 2)))});\n'
+            move += f'tl.to(S+" .hl{i}",{{opacity:0,duration:.3}},{T(max(ha + .4, ctx.at(hl.get("until"), ha - sh + 2)))});\n'
     if over_css:
         over_css.append(f"{ctx.sel} .hl{{position:absolute;opacity:0;border:{6 * k:.1f}px solid var(--accent);"
                         f"border-radius:{12 * k:.1f}px;transform-origin:50% 50%}}")
@@ -379,7 +390,7 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
                 if tt >= a + d:
                     z = zz
             return z
-        ctimes = [ctx.at(pt.get("at"), t0 + .8 + i) for i, pt in enumerate(pts)]
+        ctimes = [ctx.at(pt.get("at"), t0 - sh + .8 + i) for i, pt in enumerate(pts)]
         xy = [(_clamp(float(pt["x"]), 0, iw), _clamp(float(pt["y"]), 0, ih)) for pt in pts]
         # стрелка появляется чуть правее и ниже первой точки и подъезжает к ней
         sx, sy = xy[0][0] + 120 * k, xy[0][1] + 160 * k
@@ -416,7 +427,7 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
                          f'ease:"power2.inOut"}},{T(a)});\n')
                 zprev = zz
 
-    html += _frame_html(frame, f'<div class="shot"><img src="{esc(name)}" alt="">{over}</div>')
+    html += _frame_html(frame, f'<div class="cam"><img src="{esc(name)}" alt="">{over}</div>')
     css = "\n".join(x for x in (css, _frame_css(ctx, frame, x, y, vw, vh), shot_css, "\n".join(over_css)) if x)
     js += _enter_js(str(p.get("enter") or "rise"), t0) + move
     return SceneOut(html, css, js, {name: f})
@@ -424,14 +435,14 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
 
 # --- video ---------------------------------------------------------------------------------------------
 @scene("video", SceneDoc(
-    "Видеоклип или запись экрана (mp4/webm) в рамке или на весь кадр; играет с начала блока, без звука "
+    "Видеоклип или запись экрана (mp4/webm) в рамке или на весь кадр; играет с начала блока (кадра), без звука "
     "(по умолчанию), можно ускорить. Сверху 1–2 строки-стикера.",
     {"src": "путь к видео от папки проекта (mp4/webm/mov). Обязательно",
      "frame": "card (по умолчанию) | none | phone | laptop",
      "fit": "cover (по умолчанию) | contain",
      "x, y, w, h": "положение и размер в кадре, px; без w при frame none — на весь кадр; иначе ширина 920 "
                    "по центру, высота по пропорциям видео",
-     "start": "с какой секунды файла начинать; по умолчанию 0",
+     "media_start": "с какой секунды файла начинать; по умолчанию 0",
      "speed": "скорость 0.1…10; по умолчанию 1",
      "muted": "true (по умолчанию) — без звука ролика; false — звук клипа идёт в микс",
      "volume": "громкость звука клипа при muted: false; по умолчанию 0.5",
@@ -440,7 +451,7 @@ def screen(ctx: SceneCtx, p: dict) -> SceneOut:
      "title": "1–2 строки-стикера над видео; *слово* — инверсией; необязательно",
      "title_at": "якорь заголовка или список якорей",
      "kicker": "надзаголовок; необязательно"},
-    {"src": "local-model-test/results/qwen3-vl-8b/reel-fixed.mp4", "frame": "phone", "w": 520, "start": 1,
+    {"src": "local-model-test/results/qwen3-vl-8b/reel-fixed.mp4", "frame": "phone", "w": 520, "media_start": 1,
      "speed": 1.5, "title": ["Готовый ролик", "*за один прогон*"], "title_at": ["готовый", "прогон"],
      "enter": "slam", "at": "готовый"}))
 def video(ctx: SceneCtx, p: dict) -> SceneOut:
@@ -455,10 +466,11 @@ def video(ctx: SceneCtx, p: dict) -> SceneOut:
         x, y, w, h = 0.0, 0.0, 1080.0, 1920.0
     else:
         x, y, w, h = _box(p, frame, vh0 / vw0, top)
-    start = max(0.0, float(p.get("start") or 0))
+    start = max(0.0, float(p.get("media_start", p.get("start")) or 0))   # в кадрах блока «start» занят
     speed = _clamp(float(p.get("speed") or 1), .1, 10)
     # клип живёт весь блок и немного после (на склейке сцена ещё видна); родительская сцена скрывается сама
-    dur = ctx.length + 1.0
+    a, b = _span(ctx)
+    dur = b - a + 1.0
     if src_dur:
         if start >= src_dur:
             raise SceneError(f"блок {ctx.block}: start {num(start)} с за концом видео ({num(src_dur)} с)")
@@ -466,12 +478,12 @@ def video(ctx: SceneCtx, p: dict) -> SceneOut:
     muted = p.get("muted", True) is not False
     audio = (' muted data-volume="0"' if muted else
              f' data-has-audio="true" data-volume="{num(_clamp(float(p.get("volume", .5)), 0, 2))}"')
-    tag = (f'<video id="{ctx.uid}-video" class="clip" src="{esc(name)}" data-start="{num(ctx.start)}" '
+    tag = (f'<video id="{ctx.uid}-video" class="clip" src="{esc(name)}" data-start="{num(ctx.start + a)}" '
            f'data-duration="{num(dur)}" data-media-start="{num(start)}" data-playback-rate="{num(speed)}"'
            f'{audio} playsinline preload="auto"></video>')
-    html += _frame_html(frame, f'<div class="shot">{tag}</div>')
-    vcss = (f"{ctx.sel} .shot{{width:{w:.0f}px;height:{h:.0f}px}}\n"
-            f"{ctx.sel} .shot video{{width:100%;height:100%;object-fit:{fit_};background:#000}}")
+    html += _frame_html(frame, f'<div class="cam">{tag}</div>')
+    vcss = (f"{ctx.sel} .cam{{width:{w:.0f}px;height:{h:.0f}px}}\n"
+            f"{ctx.sel} .cam video{{width:100%;height:100%;object-fit:{fit_};background:#000}}")
     css = "\n".join(x for x in (css, _frame_css(ctx, frame, x, y, w, h), vcss) if x)
     js += _enter_js(str(p.get("enter") or "fade"), ctx.at(p.get("at"), .15))
     return SceneOut(html, css, js, {name: f})

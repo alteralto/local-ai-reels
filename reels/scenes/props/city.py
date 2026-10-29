@@ -119,7 +119,7 @@ def _windows_lit(rnd: random.Random, rects: list[tuple], share: float, cls: str,
 def moon(p: dict, uid: str) -> PropOut:
     S = 600
     c = color(p.get("color"), CREAM)
-    defs = grain(f"{uid}-g", dark=.75, light=.1, freq=.8, seed=5)
+    defs = grain(f"{uid}-g", dark=.7, light=.1, freq=.66, seed=5)
     body = ""
     if p.get("halo"):
         defs += (f'<radialGradient id="{uid}-h"><stop offset=".55" stop-color="{c}" stop-opacity=".35"/>'
@@ -130,7 +130,17 @@ def moon(p: dict, uid: str) -> PropOut:
         defs += (f'<mask id="{uid}-m"><rect x="0" y="0" width="600" height="600" fill="#fff"/>'
                  f'<circle cx="400" cy="230" r="215" fill="#000"/></mask>')
         disc = f'<g mask="url(#{uid}-m)">{disc}</g>'
-    body += f'<g class="{uid}-disc" filter="url(#{uid}-g)">{disc}</g>'
+    # к краю диска крапинок больше (как у плакатной луны): градиент прозрачности → только крапинки
+    defs += (f'<radialGradient id="{uid}-r"><stop offset=".55" stop-color="#000" stop-opacity="0"/>'
+             f'<stop offset="1" stop-color="#000" stop-opacity=".7"/></radialGradient>'
+             f'<filter id="{uid}-sp" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">'
+             f'<feTurbulence type="fractalNoise" baseFrequency=".62" numOctaves="2" seed="8" result="n"/>'
+             f'<feColorMatrix in="n" type="matrix" values="0 0 0 0 .22  0 0 0 0 .16  0 0 0 0 .12  14 0 0 0 -7.6"/>'
+             f'<feComposite in2="SourceGraphic" operator="in"/></filter>')
+    rim = f'<circle cx="300" cy="300" r="250" fill="url(#{uid}-r)" filter="url(#{uid}-sp)"/>'
+    if p.get("crescent"):
+        rim = f'<g mask="url(#{uid}-m)">{rim}</g>'
+    body += f'<g class="{uid}-disc"><g filter="url(#{uid}-g)">{disc}</g>{rim}</g>'
     return PropOut(_svg(uid, S, S, body, defs), actions={
         "rise": lambda sel, t: (f'tl.fromTo({_q(sel + " ." + uid + "-disc")},{{y:260,opacity:0}},'
                                 f'{{y:0,opacity:1,duration:1.4,ease:"power2.out"}},{num(t)});\n'),
@@ -177,7 +187,7 @@ def stars(p: dict, uid: str) -> PropOut:
                    f'r="{_f(rnd.choice([2, 2.5, 3, 3.5, 5]))}"/>' for _ in range(n))
     return PropOut(_svg(uid, W, H, f'<g fill="{c}">{dots}</g>'), actions={
         "twinkle": lambda sel, t: (f'tl.fromTo({_q(sel + " ." + uid + "-s")},{{opacity:1}},{{opacity:.25,duration:.4,'
-                                   f'yoyo:true,repeat:3,stagger:{{each:.05,from:"random"}}}},{num(t)});\n')},
+                                   f'yoyo:true,repeat:3,stagger:{{each:.05,from:"edges"}}}},{num(t)});\n')},
         w=W, h=H)
 
 
@@ -235,34 +245,35 @@ def skyline(p: dict, uid: str) -> PropOut:
 
     x = -30.0
     while x < W:   # задний ряд: высокие узкие башни
-        w = rnd.uniform(80, 160) / dens
-        h = rnd.uniform(330, 560)
+        w = rnd.uniform(110, 190) / dens
+        h = rnd.uniform(340, 560)
         back.append(f'<path class="{uid}-t" d="{_rect(x, H - h, w, h)}"/>')
         x += w + rnd.uniform(-10, 30) / dens
     x = -20.0
     while x < W:   # передний ряд: ниже и шире, иногда купол или ступенчатый верх
-        w = rnd.uniform(110, 210) / dens
-        if spire and x < sx + 170 and x + w > sx - 170:
-            x = sx + 175
+        w = rnd.uniform(150, 250) / dens
+        if spire and x < sx + 150 and x + w > sx - 170:   # место под высотку
+            x = sx + 150
             continue
-        h = rnd.uniform(170, 360)
+        h = rnd.uniform(190, 380)
         kind = rnd.random()
         d = _rect(x, H - h, w, h)
-        if kind < .22:   # купол
+        if kind < .25:   # купол
             r = w / 2
-            d += f"M{_f(x)} {_f(H - h + 1)}A{_f(r)} {_f(r * .9)} 0 0 1 {_f(x + w)} {_f(H - h + 1)}z"
-        elif kind < .45:  # ступень
-            d += _rect(x + w * .2, H - h - 60, w * .6, 61)
+            d += f"M{_f(x)} {_f(H - h + 1)}A{_f(r)} {_f(r * .85)} 0 0 1 {_f(x + w)} {_f(H - h + 1)}z"
+        elif kind < .4:  # ступень
+            d += _rect(x + w * .25, H - h - 50, w * .5, 51)
         front.append(f'<path class="{uid}-t" d="{d}"/>')
         windows(x, H - h, w, h)
-        x += w + rnd.uniform(-30, 20)
+        x += w + rnd.uniform(-40, 10)
     if spire:
         sp = "".join(_stalin(sx, H, 1.0))
         front.append(f'<path class="{uid}-t" d="{sp}"/>')
         windows(sx - 85, H - 380, 170, 380, 40)
     lit = bool(p.get("lit"))
-    lw = _windows_lit(rnd, wins, .3, f"{uid}-win")
-    body = (f'<g filter="url(#{uid}-g)"><g fill="{c}" opacity=".62">{"".join(back)}</g>'
+    lw = _windows_lit(rnd, wins, .28, f"{uid}-win")
+    body = (f'<g filter="url(#{uid}-g)"><g fill="{c}">{"".join(back)}</g>'
+            f'<g fill="#fff" opacity=".1">{"".join(back)}</g>'
             f'<g fill="{c}">{"".join(front)}</g><g style="opacity:{1 if lit else 0}" class="{uid}-wins">{lw}</g></g>')
     css = ""
     return PropOut(_svg(uid, W, H, body, grain(f"{uid}-g", .45, .18)), css, actions={
@@ -298,21 +309,20 @@ def _house_actions(uid: str, lit_cls: str | None = None) -> dict:
      "columns": "число колонн 4…8, по умолчанию 6"},
     actions=["rise"]))
 def building_classic(p: dict, uid: str) -> PropOut:
-    w, h, dep, rh = 320.0, 280.0, 16.0, 0.0
+    w, h, dep, rh = 320.0, 360.0, 16.0, 0.0
     face = color(p.get("color"), CREAM)
     det = color(p.get("detail"), INK)
     n = max(4, min(8, int(p.get("columns", 6))))
-    top = 0.0
-    side = f"M{_f(w)} {_f(top + 70)}L{_f(w + dep)} {_f(top + 66)}V{_f(h - 4)}L{_f(w)} {_f(h)}z"
+    side = f"M{_f(w)} 70L{_f(w + dep)} 66V{_f(h - 4)}L{_f(w)} {_f(h)}z"
     parts = [_shade(side, face, .32), f'<path d="{_rect(0, 0, w, h)}" fill="{face}"/>']
     # фронтон: тёмный треугольник с кремовым тимпаном
-    parts.append(f'<path d="M14 92L160 18L306 92z" fill="{det}"/><path d="M50 82L160 32L270 82z" fill="{face}"/>')
-    parts.append(f'<path d="{_rect(14, 96, 292, 14)}{_rect(30, 116, 260, 7)}" fill="{det}"/>')   # антаблемент
-    cw, x0, x1 = 15.0, 46.0, 274.0
+    parts.append(f'<path d="M14 96L160 20L306 96z" fill="{det}"/><path d="M52 85L160 35L268 85z" fill="{face}"/>')
+    parts.append(f'<path d="{_rect(14, 100, 292, 16)}{_rect(30, 122, 260, 8)}" fill="{det}"/>')   # антаблемент
+    cw, x0, x1 = 17.0, 44.0, 276.0
     step = (x1 - x0 - cw) / (n - 1)
-    cols = "".join(_rect(x0 + i * step, 134, cw, 102) for i in range(n))
+    cols = "".join(_rect(x0 + i * step, 142, cw, 168) for i in range(n))
     parts.append(f'<path d="{cols}" fill="{det}"/>')
-    parts.append(f'<path d="{_rect(22, 240, 276, 10)}{_rect(10, 254, 300, 10)}{_rect(0, 268, 320, 12)}" fill="{det}"/>')
+    parts.append(f'<path d="{_rect(22, 316, 276, 10)}{_rect(10, 331, 300, 11)}{_rect(0, 347, 320, 13)}" fill="{det}"/>')
     body = f'<g class="{uid}-b" filter="url(#{uid}-g)">{"".join(parts)}</g>'
     return PropOut(_svg(uid, w + dep, h + rh, body, grain(f"{uid}-g", .55, .12)),
                    actions=_house_actions(uid), w=w + dep, h=h + rh)
@@ -454,12 +464,11 @@ def streetlamp(p: dict, uid: str) -> PropOut:
     light = (f'<g class="{uid}-light" style="opacity:{1 if on else 0}">'
              f'<path d="M{_f(cx - 22)} 96L{_f(cx - 170)} {H}H{_f(cx + 170)}L{_f(cx + 22)} 96z" fill="url(#{uid}-c)"/>'
              f'<circle cx="{_f(cx)}" cy="88" r="70" fill="url(#{uid}-h)"/>'
-             f'<path d="M{_f(cx - 20)} 74h40l-6 22h-28z" fill="{lt}"/></g>')
+             f'<path d="M{_f(cx - 30)} 62h60l-10 32h-40z" fill="{lt}"/></g>')
     lamp = (f'<g filter="url(#{uid}-g)" fill="{pole}">'
-            f'<path d="M{_f(cx - 34)} 60h68l-12 -22h-44z"/><path d="{_rect(cx - 4, 26, 8, 14)}"/>'
-            f'<path d="M{_f(cx - 22)} 60h44v14h-44z" opacity=".9"/>'
-            f'<path d="{_rect(cx - 7, 96, 14, H - 130)}"/><path d="{_rect(cx - 16, H - 40, 32, 40)}"/>'
-            f'<path d="{_rect(cx - 11, H - 64, 22, 26)}"/></g>')
+            f'<path d="M{_f(cx - 46)} 62h92l-18 -30h-56z"/><path d="{_rect(cx - 6, 18, 12, 16)}"/>'
+            f'<path d="{_rect(cx - 9, 96, 18, H - 130)}"/><path d="{_rect(cx - 20, H - 44, 40, 44)}"/>'
+            f'<path d="{_rect(cx - 14, H - 70, 28, 28)}"/><path d="{_rect(cx - 13, 92, 26, 10)}"/></g>')
     return PropOut(_svg(uid, W, H, light + lamp, defs), actions={"glow": _act_glow(f"{uid}-light")}, w=W, h=H)
 
 
@@ -479,18 +488,18 @@ def ground(p: dict, uid: str) -> PropOut:
         d = _rect(-20, 0, W + 40, H + 40)
     body = (f'<g class="{uid}-b" filter="url(#{uid}-g)"><path d="{d}" fill="{c}"/>'
             f'<path d="{_rect(-20, 0, W + 40, 10)}" fill="#000" opacity=".18"/></g>')
-    return PropOut(_svg(uid, W, H, body, grain(f"{uid}-g", .35, .4, .85, 9)),
+    return PropOut(_svg(uid, W, H, body, grain(f"{uid}-g", .35, .75, .7, 9)),
                    actions={"rise": _act_rise(f"{uid}-b", 0, .6)}, w=W, h=H)
 
 
 @prop("tree", PropDoc(
     "Дерево: ствол и круглая крона в два тона",
-    {"color": "цвет кроны, по умолчанию тёмно-зелёный", "trunk": "цвет ствола, по умолчанию почти чёрный",
+    {"color": "цвет кроны, по умолчанию deep", "trunk": "цвет ствола, по умолчанию почти чёрный",
      "shape": "round (круглая) или poplar (тополь), по умолчанию round"},
     actions=["sway", "pop"]))
 def tree(p: dict, uid: str) -> PropOut:
     W, H = 220, 340
-    leaf = color(p.get("color"), "#2f5d3a")
+    leaf = color(p.get("color"), "var(--deep)")
     trunk = color(p.get("trunk"), INK)
     if str(p.get("shape", "round")) == "poplar":
         crown = '<ellipse cx="110" cy="140" rx="62" ry="132"/>'

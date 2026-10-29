@@ -242,8 +242,10 @@ def cmd_draft(a) -> int:
     from .draft import DraftError, draft
     try:
         facts = Path(a.facts).read_text(encoding="utf-8") if a.facts else ""
-        path = draft(a.topic, Path(a.out), facts=facts, url=a.url, model=a.model, limit=a.limit, theme=a.theme)
-    except (DraftError, ToolError, OSError) as e:
+        brand = yaml.safe_load(Path(a.brand).read_text(encoding="utf-8")) if a.brand else None
+        path = draft(a.topic, Path(a.out), facts=facts, url=a.url, model=a.model, limit=a.limit, theme=a.theme,
+                     format=a.format, hooks=a.hooks, brand=brand)
+    except (DraftError, ToolError, OSError, KeyError) as e:
         say(f"✗ {e}", err=True)
         return 1
     say(f"черновик: {path}\nдальше: проверьте факты и запустите  python -m reels run {a.out}")
@@ -353,6 +355,10 @@ def parser() -> argparse.ArgumentParser:
     sp.add_argument("--model", help="модель (по умолчанию REELS_LLM_MODEL или первая из /models)")
     sp.add_argument("--limit", type=int, default=60)
     sp.add_argument("--theme", default="blueprint")
+    sp.add_argument("--format", default="auto",
+                    help="формат ролика: auto | classic | question | myth | list | twist | before-after | promo | news")
+    sp.add_argument("--hooks", type=int, default=3, help="сколько вариантов хука (по монтажу на каждый)")
+    sp.add_argument("--brand", help="YAML с брендом: логотип, название, партнёры")
     sp.set_defaults(fn=cmd_draft)
     sp = sub.add_parser("factory", help="конвейер по списку тем: черновик → ролики, сводка factory.md")
     sp.add_argument("topics", help="файл тем: по теме на строку (факты после « | » или с отступом) или YAML")

@@ -190,7 +190,7 @@ def _base_css(theme: Theme, vars_css: str) -> str:
   #root .scene.has-brand .kicker {{ top:186px; }}
   .partners {{ position:absolute; left:40px; right:40px; bottom:90px; z-index:40; display:flex; flex-wrap:wrap;
               justify-content:center; align-items:center; gap:14px 22px; font-family:var(--font); font-size:30px;
-              font-weight:800; letter-spacing:.02em; text-transform:uppercase; color:var(--ink); }}
+              font-weight:800; letter-spacing:.02em; color:var(--ink); }}
   .partners img {{ height:64px; width:auto; object-fit:contain; }}
   .partners .x {{ opacity:.6; font-weight:500; }}
   #grain {{ position:absolute; inset:0; z-index:70; pointer-events:none; background-image:url(grain.png);
@@ -366,8 +366,9 @@ def _render_unit(ctx: SceneCtx, spec: dict, extra_sfx: list[dict], where: str) -
         sel, t0 = f"#{uid}", f"t+{num(starts[k])}"
         if k > 0:
             prev = f"#{ctx.uid}s{k}"
-            unit.css.append(f"{sel} {{ visibility:hidden; }}")
-            ctl.append(f'    tl.set("{sel}", {{visibility:"visible"}}, {t0});')
+            # скрыт и прозрачностью: HyperFrames сам управляет visibility, одной её мало
+            unit.css.append(f"{sel} {{ visibility:hidden; opacity:0; }}")
+            ctl.append(f'    tl.set("{sel}", {{autoAlpha:1}}, {t0});')
             if tr == "slam":
                 ctl.append(f'    tl.fromTo("{sel}", {{scale:1.08}}, {{scale:1, duration:.3, ease:"power3.out"}}, {t0});')
                 ctl.append(f'    tl.fromTo("{sel} > .flash", {{opacity:.75}}, {{opacity:0, duration:.2, ease:"power1.out"}}, '
@@ -377,11 +378,11 @@ def _render_unit(ctx: SceneCtx, spec: dict, extra_sfx: list[dict], where: str) -
                            f'{{clipPath:"inset(0% 0% 0% 0%)", duration:.25, ease:"power2.inOut"}}, {t0});')
             elif tr == "fade":
                 ctl.append(f'    tl.fromTo("{sel}", {{opacity:0}}, {{opacity:1, duration:.3, ease:"power1.out"}}, {t0});')
-            ctl.append(f'    tl.set("{prev}", {{visibility:"hidden"}}, t+{num(starts[k] + TRANSITION_OVERLAP[tr])});')
+            ctl.append(f'    tl.set("{prev}", {{autoAlpha:0}}, t+{num(starts[k] + TRANSITION_OVERLAP[tr])});')
         if sh.get("brand") is False:   # шапка спрятана на время кадра
-            ctl.append(f'    tl.set(S+" > .brand", {{visibility:"hidden"}}, {t0});')
+            ctl.append(f'    tl.set(S+" > .brand", {{autoAlpha:0}}, {t0});')
             if ends[k] is not None:
-                ctl.append(f'    tl.set(S+" > .brand", {{visibility:"visible"}}, t+{num(ends[k])});')
+                ctl.append(f'    tl.set(S+" > .brand", {{autoAlpha:1}}, t+{num(ends[k])});')
     unit.html = "\n".join(html)
     unit.ctl = "\n".join(ctl)
     return unit

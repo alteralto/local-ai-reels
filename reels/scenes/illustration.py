@@ -57,6 +57,7 @@ GRAIN_SVG = ('<svg class="grain" viewBox="0 0 1080 1920" preserveAspectRatio="no
     {"layers": "список слоёв (до 24) {prop, x, y, w, z, flip, rotate, anchor, params, enter, at, actions, float, "
                "parallax}. prop — имя пропа (см. PROPS). x, y — точка привязки в px кадра 1080×1920 (по умолчанию "
                "низ-центр пропа: anchor bottom; ещё center, top). w — ширина в px (высота по пропорциям пропа). "
+               "shadow: true или {length 0…1.5, skew градусы, opacity} — длинная тень (ночь, фонарь). "
                "z — порядок (фон moon/sun/stars 0, skyline/cloud 1, ground 2, прочее 10+номер). flip — зеркально. "
                "rotate — наклон в градусах (плакатный «развал» домов: −4…4). params — параметры пропа. "
                "enter — pop|rise|drop|slide-left|slide-right|fade|none (по умолчанию rise), at — якорь появления "
@@ -64,19 +65,18 @@ GRAIN_SVG = ('<svg class="grain" viewBox="0 0 1080 1920" preserveAspectRatio="no
                "glow, open…). float: true — лёгкое покачивание. parallax 0…1 — медленный дрейф влево",
      "bg": "фон сцены: переменная темы (bg, deep, ink, accent, alt) или цвет «#cc1418»; по умолчанию bg",
      "ground": "полоса земли {color, height (px, по умолчанию 380), edge: flat|rough, at}; необязательно",
-     "grain": "зерно поверх всего кадра 0…1, по умолчанию 0.35 (0 — выключить)",
+     "grain": "зерно поверх всего кадра 0…1, по умолчанию 0.5 (0 — выключить)",
      "camera": "медленный наезд {zoom: [от, до], at, duration, origin: [x, y]}; по умолчанию без наезда"},
-    {"bg": "#cc1418", "ground": {"color": "#1d1c1c", "height": 420, "at": 0},
-     "camera": {"zoom": [1, 1.06], "at": 0},
+    {"bg": "#cc1418", "ground": {"color": "#1d1c1c", "height": 540, "at": 0},
+     "camera": {"zoom": [1, 1.05], "at": 0},
      "layers": [
-         {"prop": "moon", "x": 600, "y": 1000, "w": 560, "enter": "fade", "at": 0, "parallax": .3},
-         {"prop": "skyline", "x": 540, "y": 1510, "w": 1080, "params": {"color": "#8e0d10"}, "enter": "none",
+         {"prop": "moon", "x": 560, "y": 1130, "w": 720, "enter": "fade", "at": 0, "parallax": .3},
+         {"prop": "skyline", "x": 540, "y": 1400, "w": 1080, "params": {"color": "#8e0d10"}, "enter": "none",
           "actions": [{"do": "rise", "at": 0.1}]},
-         {"prop": "panel-block", "x": 205, "y": 1580, "w": 290, "rotate": -3, "enter": "rise", "at": "панельки"},
-         {"prop": "building-classic", "x": 540, "y": 1560, "w": 320, "rotate": 1, "enter": "rise", "at": "классика"},
-         {"prop": "building-brick", "x": 870, "y": 1590, "w": 280, "rotate": 4, "enter": "rise", "at": "кирпич"},
-         {"prop": "streetlamp", "x": 1000, "y": 1620, "w": 160, "params": {"on": False}, "enter": "fade",
-          "actions": [{"do": "glow", "at": "вечер"}]}]}))
+         {"prop": "panel-block", "x": 190, "y": 1480, "w": 330, "rotate": -3, "at": "панельки"},
+         {"prop": "building-classic", "x": 540, "y": 1455, "w": 360, "rotate": 1, "at": "классика"},
+         {"prop": "building-brick", "x": 880, "y": 1490, "w": 320, "rotate": 4, "at": "кирпич",
+          "actions": [{"do": "lights", "at": "вечер"}]}]}))
 def illustration(ctx: SceneCtx, p: dict) -> SceneOut:
     layers = p.get("layers") or []
     if not isinstance(layers, list) or not layers:
@@ -88,8 +88,8 @@ def illustration(ctx: SceneCtx, p: dict) -> SceneOut:
     bg = color(p.get("bg"), "var(--bg)")
     css.append(f"{S}{{background:{bg};background-image:none}}\n"
                f"{S} .cam{{position:absolute;inset:0}}\n"
-               f"{S} .lay{{position:absolute}}\n{S} .lay .mv,{S} .lay .fl{{width:100%;height:100%}}\n"
-               f"{S} .lay svg{{display:block;width:100%;height:100%;overflow:visible}}\n"
+               f"{S} .lay{{position:absolute}}\n{S} .lay .mv,{S} .lay .fl{{position:relative;width:100%;height:100%}}\n"
+               f"{S} .lay svg{{position:absolute;inset:0;display:block;width:100%;height:100%;overflow:visible}}\n"
                f"{S} .grain{{position:absolute;inset:0;width:1080px;height:1920px;pointer-events:none;z-index:90}}")
     items = []
     g = p.get("ground")
@@ -119,7 +119,16 @@ def illustration(ctx: SceneCtx, p: dict) -> SceneOut:
         if ly.get("rotate"):
             tf.append(f"rotate({num(float(ly['rotate']))}deg)")
         cls = f"l{i}"
-        html.append(f'<div class="lay {cls}"><div class="mv"><div class="fl">{out.svg}</div></div></div>')
+        shadow = ""
+        sh = ly.get("shadow")
+        if sh:   # длинная тень: копия пропа, залитая чёрным, опрокинутая и скошенная от низа
+            sh = sh if isinstance(sh, dict) else {}
+            ln, sk = float(sh.get("length", .45)), float(sh.get("skew", -55))
+            shadow = f'<div class="sh">{out.svg}</div>'
+            css.append(f"{S} .{cls} .sh{{position:absolute;inset:0;transform-origin:50% 100%;"
+                       f"transform:scaleY({num(-ln)}) skewX({num(-sk)}deg);filter:brightness(0);"
+                       f"opacity:{num(float(sh.get('opacity', .35)))}}}")
+        html.append(f'<div class="lay {cls}"><div class="mv"><div class="fl">{shadow}{out.svg}</div></div></div>')
         css.append(f"{S} .{cls}{{left:{x - w / 2:.1f}px;top:{top:.1f}px;width:{w:.1f}px;height:{h:.1f}px;z-index:{z}}}"
                    + (f"\n{S} .{cls} .fl{{transform:{' '.join(tf)};transform-origin:50% 100%}}" if tf else ""))
         if out.css:
@@ -146,7 +155,7 @@ def illustration(ctx: SceneCtx, p: dict) -> SceneOut:
         if par:
             js.append(f'tl.fromTo(S+" .{cls} .mv",{{x:0}},{{x:{num(-90 * par)},duration:{num(end)},ease:"none"}},t);\n')
     html = [f'<div class="cam">{"".join(html)}</div>']
-    gr = max(0.0, min(1.0, float(p.get("grain", .35))))
+    gr = max(0.0, min(1.0, float(p.get("grain", .5))))
     if gr:
         html.append(GRAIN_SVG.replace("{u}", ctx.uid))
         css.append(f"{S} .grain{{opacity:{num(gr)}}}")

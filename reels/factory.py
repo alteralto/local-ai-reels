@@ -307,7 +307,7 @@ def run_factory(topics_path: Path, out: Path, *, yes: bool = False, edits: list[
                     raise ToolError(llm_down)
                 try:
                     drafting.draft(it["topic"], d, facts=it["facts"], url=url, model=model,
-                                   theme=it["theme"] or theme or DEFAULT_THEME)
+                                   theme=it["theme"] or theme or DEFAULT_THEME, format=it.get("format") or "auto")
                 except ToolError as e:
                     if str(e).startswith("нет связи с LLM"):
                         llm_down = _first_line(e)

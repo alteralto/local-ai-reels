@@ -256,10 +256,10 @@ scene:
 Плоская плакатная иллюстрация из пропов (луна, силуэт города, дома, фонарь, кабинка, человек…): слои с положением, появлением и действиями пропов по якорям диктора, лёгкое покачивание и медленный наезд камеры. Можно во весь кадр; главное держите в зоне y 160…1450.
 
 Параметры:
-- `layers` — список слоёв (до 24) {prop, x, y, w, z, flip, rotate, anchor, params, enter, at, actions, float, parallax}. prop — имя пропа (см. PROPS). x, y — точка привязки в px кадра 1080×1920 (по умолчанию низ-центр пропа: anchor bottom; ещё center, top). w — ширина в px (высота по пропорциям пропа). z — порядок (фон moon/sun/stars 0, skyline/cloud 1, ground 2, прочее 10+номер). flip — зеркально. rotate — наклон в градусах (плакатный «развал» домов: −4…4). params — параметры пропа. enter — pop|rise|drop|slide-left|slide-right|fade|none (по умолчанию rise), at — якорь появления (по умолчанию лесенкой от начала блока). actions — [{do: действие пропа, at: якорь}] (rise, lights, glow, open…). float: true — лёгкое покачивание. parallax 0…1 — медленный дрейф влево
+- `layers` — список слоёв (до 24) {prop, x, y, w, z, flip, rotate, anchor, params, enter, at, actions, float, parallax}. prop — имя пропа (см. PROPS). x, y — точка привязки в px кадра 1080×1920 (по умолчанию низ-центр пропа: anchor bottom; ещё center, top). w — ширина в px (высота по пропорциям пропа). shadow: true или {length 0…1.5, skew градусы, opacity} — длинная тень (ночь, фонарь). z — порядок (фон moon/sun/stars 0, skyline/cloud 1, ground 2, прочее 10+номер). flip — зеркально. rotate — наклон в градусах (плакатный «развал» домов: −4…4). params — параметры пропа. enter — pop|rise|drop|slide-left|slide-right|fade|none (по умолчанию rise), at — якорь появления (по умолчанию лесенкой от начала блока). actions — [{do: действие пропа, at: якорь}] (rise, lights, glow, open…). float: true — лёгкое покачивание. parallax 0…1 — медленный дрейф влево
 - `bg` — фон сцены: переменная темы (bg, deep, ink, accent, alt) или цвет «#cc1418»; по умолчанию bg
 - `ground` — полоса земли {color, height (px, по умолчанию 380), edge: flat|rough, at}; необязательно
-- `grain` — зерно поверх всего кадра 0…1, по умолчанию 0.35 (0 — выключить)
+- `grain` — зерно поверх всего кадра 0…1, по умолчанию 0.5 (0 — выключить)
 - `camera` — медленный наезд {zoom: [от, до], at, duration, origin: [x, y]}; по умолчанию без наезда
 
 Пример:
@@ -269,24 +269,24 @@ scene:
   bg: '#cc1418'
   ground:
     color: '#1d1c1c'
-    height: 420
+    height: 540
     at: 0
   camera:
     zoom:
     - 1
-    - 1.06
+    - 1.05
     at: 0
   layers:
   - prop: moon
-    x: 600
-    y: 1000
-    w: 560
+    x: 560
+    y: 1130
+    w: 720
     enter: fade
     at: 0
     parallax: 0.3
   - prop: skyline
     x: 540
-    y: 1510
+    y: 1400
     w: 1080
     params:
       color: '#8e0d10'
@@ -295,35 +295,25 @@ scene:
     - do: rise
       at: 0.1
   - prop: panel-block
-    x: 205
-    y: 1580
-    w: 290
+    x: 190
+    y: 1480
+    w: 330
     rotate: -3
-    enter: rise
     at: панельки
   - prop: building-classic
     x: 540
-    y: 1560
-    w: 320
+    y: 1455
+    w: 360
     rotate: 1
-    enter: rise
     at: классика
   - prop: building-brick
-    x: 870
-    y: 1590
-    w: 280
+    x: 880
+    y: 1490
+    w: 320
     rotate: 4
-    enter: rise
     at: кирпич
-  - prop: streetlamp
-    x: 1000
-    y: 1620
-    w: 160
-    params:
-      'on': false
-    enter: fade
     actions:
-    - do: glow
+    - do: lights
       at: вечер
 ```
 
@@ -486,22 +476,24 @@ scene:
   - at: этапы
     region:
     - 300
-    - 125
-    - 1050
-    - 60
+    - 120
+    - 600
+    - 70
+    zoom: 1.6
   - at: дубли
     region:
     - 310
     - 190
-    - 1030
+    - 560
     - 300
+    zoom: 1.6
   - at: подтвердить
     region:
-    - 310
-    - 400
-    - 440
-    - 100
-    zoom: 2
+    - 320
+    - 430
+    - 420
+    - 70
+    zoom: 2.4
   cursor:
   - at: дубли
     x: 1260
@@ -518,6 +510,7 @@ scene:
     - 990
     - 46
     until: подтвердить
+    dim: true
 ```
 
 ### stat

@@ -107,7 +107,8 @@ class ConfigError(ValueError):
 def _merge(base: dict, over: dict) -> dict:
     out = copy.deepcopy(base)
     for k, v in (over or {}).items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict) and k not in ("accents",):
+        # accents и edits заменяются целиком: свои монтажи проекта не смешиваются с linear по умолчанию
+        if isinstance(v, dict) and isinstance(out.get(k), dict) and k not in ("accents", "edits"):
             out[k] = _merge(out[k], v)
         else:
             out[k] = copy.deepcopy(v)
@@ -221,7 +222,7 @@ def sfx_cues(raw, where: str) -> list[dict]:
     """Звуковые акценты: [{at, sound, volume}] → проверенный список (volume по умолчанию 0.6)."""
     if not raw:
         return []
-    if isinstance(raw, dict):
+    if isinstance(raw, (dict, str)):
         raw = [raw]
     if not isinstance(raw, list):
         raise ConfigError(f"{where}: ожидался список [{{at, sound, volume}}]")
@@ -309,8 +310,10 @@ def from_dict(raw: dict, directory: Path) -> Project:
                             brand=b.get("brand", True) is not False))
     if not 1 <= len(blocks) <= 9:
         raise ConfigError(f"blocks: нужно от 1 до 9 блоков, сейчас {len(blocks)}")
-    if not cfg["edits"]:
+    if not raw.get("edits"):   # монтажей нет — один linear по всем блокам (сколько бы их ни было)
         cfg["edits"] = {"linear": "".join(str(b.index) for b in blocks)}
+    # linear (если есть) — первым, как было до замены edits целиком; остальные — в порядке reel.yaml
+    cfg["edits"] = dict(sorted(cfg["edits"].items(), key=lambda kv: kv[0] != "linear"))
     have = {str(b.index) for b in blocks}
     for name, order in cfg["edits"].items():
         order = str(order)

@@ -159,7 +159,7 @@ def kiosk(p: dict, uid: str) -> PropOut:
    <text class="{uid}-t" x="{door_x + door_w / 2}" y="{door_y + 117}" font-size="32" fill="{CREAM}"
     text-anchor="middle" dominant-baseline="central">{sign}</text>
   </g>
- </g>
+ </g></g></g>
  <g {g}>
   <polygon points="{fx0 - 14},{fy0 - 26} {fx1 + 14},{fy0 - 26} {fx1 + dx + 18},{fy0 + dy - 30} {fx0 + dx - 10},{fy0 + dy - 30}" fill="{roof}"/>
   <polygon points="{fx0 - 14},{fy0 - 26} {fx1 + 14},{fy0 - 26} {fx1 + dx + 18},{fy0 + dy - 30} {fx0 + dx - 10},{fy0 + dy - 30}" fill="#fff" opacity=".16"/>
@@ -228,7 +228,7 @@ def _held(kind: str, uid: str, accent: str) -> str:
                 f'<rect x="-13" y="-60" width="26" height="48" rx="2" style="fill:{accent}"/>'
                 f'<rect x="-13" y="-60" width="26" height="48" rx="2" fill="#fff" opacity=".35"/></g>')
     if kind == "banana":
-        return (f'<g class="{uid}-held"><path d="M-6,-4 C10,-14 28,-40 26,-80 C30,-84 35,-83 36,-78 '
+        return (f'<g class="{uid}-held" transform="scale(1.5)"><path d="M-6,-4 C10,-14 28,-40 26,-80 C30,-84 35,-83 36,-78 '
                 f'C40,-34 22,-4 2,8 Z" fill="#f2c935"/>'
                 f'<path d="M-6,-4 C10,-14 28,-40 26,-80 C24,-40 10,-16 -2,-6Z" fill="#c98f13" opacity=".7"/>'
                 f'<rect x="26" y="-90" width="6" height="12" rx="2" fill="#5a3d16" transform="rotate(8 29 -84)"/></g>')

@@ -165,8 +165,8 @@ def _cls(it: dict) -> str:
 
 def slam_js(sel: str, at: float) -> str:
     """«Впечатывание»: крупно (×1.32), полупрозрачно, размыто, повёрнуто — и за 0.18 с на место."""
-    return (f'tl.fromTo(S+" {sel}",{{opacity:.3,scale:1.32,rotation:-4,filter:"blur(6px)"}},'
-            f'{{opacity:1,scale:1,rotation:0,filter:"blur(0px)",duration:.18,ease:"power2.in"}},{T(at)});\n')
+    return (f'tl.fromTo(S+" {sel}",{{opacity:.3,scale:1.32,rotation:-4}},'
+            f'{{opacity:1,scale:1,rotation:0,duration:.18,ease:"power2.in"}},{T(at)});\n')
 
 
 def wipe_js(sel: str, at: float) -> str:

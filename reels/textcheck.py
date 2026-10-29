@@ -36,7 +36,7 @@ Y_KEYS = {"top", "y"}
 X_KEYS = {"x", "left"}
 # шаблоны, где текст в кадре несёт смысл ролика (наклейки, титры, ярлыки)
 TEXT_SCENES = {"stickers", "tag", "cover"}
-TEXT_KEYS = ("lines", "text", "title", "label", "sub", "items")
+TEXT_KEYS = ("lines", "text", "title", "title2", "label", "sub", "tags", "items")
 
 
 @dataclass
@@ -76,10 +76,12 @@ def shot_lengths(text: str, scene) -> list[float]:
     total = seconds(len(words))
     if len(shots) <= 1:
         return [total]
-    starts = []
-    for i, s in enumerate(shots):
-        t = _anchor_time(s.get("at"), words, total) if i else 0.0
-        starts.append(t if t is not None else (starts[-1] if starts else 0.0))
+    starts: list[float] = []
+    for i, s in enumerate(shots):          # как compose.shot_starts: start или at, без якоря — равные доли
+        at = s.get("start", s.get("at"))
+        at = (at[0] if at else None) if isinstance(at, (list, tuple)) else at
+        t = _anchor_time(at, words, total) if i else 0.0
+        starts.append(t if t is not None else total * i / len(shots))
     ends = starts[1:] + [total]
     return [max(0.0, e - s) for s, e in zip(starts, ends)]
 
