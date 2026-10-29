@@ -126,7 +126,8 @@ def test_build_linear(tmp_path):
     assert float(card["data-start"]) + float(card["data-duration"]) == pytest.approx(total, abs=.01)
     src = (d / "index.html").read_text(encoding="utf-8")
     assert "<em>где нет туалета.</em>" in src and "источник: RSPH, «Taking the P***», 2019" in src
-    assert "gsap@3.14.2" in src and 'window.__timelines["main"] = tl' in src
+    assert 'src="gsap.min.js"' in src and (d / "gsap.min.js").exists()  # GSAP лежит рядом, без CDN
+    assert 'window.__timelines["main"] = tl' in src
     assert "--accent:" in src and "background-size: 40px 40px" in src
 
 
@@ -172,7 +173,7 @@ def test_order_swap_changes_layout(tmp_path):
 
 def test_music_and_no_endcard(tmp_path):
     p, timing = make_project(tmp_path, with_music=True, endcard="", source="",
-                             music={"engine": "file", "file": "m.wav", "volume": .3})
+                             music={"engine": "file", "file": "m.wav", "volume": .3, "duck": False})
     d = compose.build_edit(p, "linear", [1, 2, 3, 4], timing)
     assert (d / "music.wav").exists()
     doc = parse(d / "index.html")
@@ -183,6 +184,16 @@ def test_music_and_no_endcard(tmp_path):
     last = attrs(doc, "div", id="b4")[0]
     assert float(last["data-start"]) + float(last["data-duration"]) == pytest.approx(total, abs=.01)
     assert compose.snapshot_times(p, [1, 2, 3, 4], timing)[-1] < total
+
+
+def test_music_ducked_by_default(tmp_path):
+    from reels.util import wav_duration
+    p, timing = make_project(tmp_path, with_music=True)
+    d = compose.build_edit(p, "linear", [1, 2, 3, 4], timing)
+    m = attrs(parse(d / "index.html"), "audio", id="music")[0]
+    assert m["data-volume"] == "1" and "data-fade-out" not in m  # затухания вписаны в сам трек
+    total = float(attrs(parse(d / "index.html"), "div", id="root")[0]["data-duration"])
+    assert wav_duration(d / "music.wav") == pytest.approx(total, abs=.01)
 
 
 def test_broken_scene_js_disabled(tmp_path):

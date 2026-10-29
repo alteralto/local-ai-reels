@@ -39,13 +39,29 @@ def run(cmd: list, cwd: Path | None = None, env: dict | None = None, check: bool
     return p
 
 
+_FILE_HASHES: dict[tuple, str] = {}
+
+
+def file_sha(path: Path) -> str:
+    """Хэш содержимого файла кусками по 1 МиБ; повторно в том же процессе — по (путь, размер, mtime) без чтения."""
+    st = path.stat()
+    key = (str(path.resolve()), st.st_size, st.st_mtime_ns)
+    if key not in _FILE_HASHES:
+        h = hashlib.sha256()
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(1 << 20), b""):
+                h.update(chunk)
+        _FILE_HASHES[key] = h.hexdigest()
+    return _FILE_HASHES[key]
+
+
 def sha(*items) -> str:
     """Хэш входов этапа: строки/числа/словари хэшируются как JSON, пути — по содержимому файла."""
     h = hashlib.sha256()
     for it in items:
         if isinstance(it, Path):
             h.update(str(it.name).encode())
-            h.update(it.read_bytes() if it.is_file() else b"<missing>")
+            h.update(file_sha(it).encode() if it.is_file() else b"<missing>")
         else:
             h.update(json.dumps(it, ensure_ascii=False, sort_keys=True, default=str).encode())
     return h.hexdigest()[:16]
@@ -64,6 +80,14 @@ def device(pref: str = "auto") -> str:
             return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
         except ImportError:
             return "cpu"
+
+
+def cache_dir() -> Path:
+    """Кэш пакета: REELS_CACHE, иначе %LOCALAPPDATA%/local-ai-reels (Windows) или ~/.cache/local-ai-reels."""
+    if os.environ.get("REELS_CACHE"):
+        return Path(os.environ["REELS_CACHE"])
+    base = os.environ.get("LOCALAPPDATA") if os.name == "nt" else os.environ.get("XDG_CACHE_HOME")
+    return Path(base or Path.home() / ".cache") / "local-ai-reels"
 
 
 def read_json(path: Path, default=None):

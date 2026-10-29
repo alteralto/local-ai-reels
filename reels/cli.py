@@ -105,9 +105,10 @@ def cmd_run(a) -> int:
 def cmd_batch(a) -> int:
     from .pipeline import StageError
     rows = []
-    for d in _projects(a.projects):
-        t0 = time.time()
+    for arg in a.projects:
+        d, t0 = Path(arg), time.time()
         try:
+            d = _projects([arg])[0]
             status, note = _run_project(d, a, False)
         except (StageError, ToolError, ConfigError) as e:
             status, note = "fail", str(e).splitlines()[0][:100]
@@ -187,10 +188,10 @@ def cmd_scenes(a) -> int:
 
 def cmd_draft(a) -> int:
     from .draft import DraftError, draft
-    facts = Path(a.facts).read_text(encoding="utf-8") if a.facts else ""
     try:
+        facts = Path(a.facts).read_text(encoding="utf-8") if a.facts else ""
         path = draft(a.topic, Path(a.out), facts=facts, url=a.url, model=a.model, limit=a.limit, theme=a.theme)
-    except DraftError as e:
+    except (DraftError, ToolError, OSError) as e:
         say(f"✗ {e}", err=True)
         return 1
     say(f"черновик: {path}\nдальше: проверьте факты и запустите  python -m reels run {a.out}")
@@ -292,6 +293,9 @@ def main(argv: list[str] | None = None) -> int:
     except ConfigError as e:
         say(f"✗ {e}", err=True)
         return 2
+    except (ToolError, OSError) as e:  # внешняя программа или файл: понятное сообщение вместо traceback
+        say(f"✗ {e}", err=True)
+        return 1
     except KeyboardInterrupt:
         say("прервано", err=True)
         return 130

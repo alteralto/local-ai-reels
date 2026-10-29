@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,12 +7,17 @@ name = "local-ai-reels"
 version = "0.2.0"
 description = "Конвейер вертикальных роликов 1080×1920 на локальных моделях: F5-TTS, Whisper, HyperFrames, MusicGen"
 readme = "README.md"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE.md"]
 requires-python = ">=3.10"
 keywords = ["reels", "shorts", "tts", "f5-tts", "whisper", "hyperframes", "gsap", "video", "local-ai"]
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Operating System :: OS Independent",
     "Topic :: Multimedia :: Video",
     "Topic :: Multimedia :: Sound/Audio :: Speech",
     "Natural Language :: Russian",
@@ -24,7 +29,7 @@ dependencies = ["pyyaml>=6", "numpy>=1.24", "scipy>=1.10"]
 ml = ["f5-tts>=1.1", "ruaccent", "faster-whisper>=1.0", "transformers>=4.40", "accelerate"]
 asr = ["faster-whisper>=1.0"]
 piper = ["piper-tts"]
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "ruff==0.16.9", "build>=1.2", "twine>=6", "pre-commit>=4"]
 
 [project.scripts]
 reels = "reels.cli:main"
@@ -32,12 +37,13 @@ reels = "reels.cli:main"
 [project.urls]
 Homepage = "https://github.com/alteralto/local-ai-reels"
 Issues = "https://github.com/alteralto/local-ai-reels/issues"
+Changelog = "https://github.com/alteralto/local-ai-reels/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["reels*"]
 
 [tool.setuptools.package-data]
-reels = ["templates/*.yaml", "prompts/*.md", "*.mjs"]
+reels = ["templates/*.yaml", "prompts/*.md", "*.mjs", "vendor/**/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

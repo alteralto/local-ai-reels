@@ -1,0 +1,26 @@
+# pre-commit install  → проверки перед каждым коммитом;  pre-commit run --all-files → по всему репозиторию.
+# Версии обновляет `pre-commit autoupdate`; ruff держим той же версии, что в .github/workflows/lint.yml.
+# записанные ответы моделей храним как есть
+exclude: ^local-model-test/results/
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      # - id: ruff-format  # включим вместе с `ruff format --check` в CI
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+      - id: end-of-file-fixer
+        exclude: ^LICENSE$|\.(svg|json)$
+      - id: trailing-whitespace
+        exclude: \.(md|svg)$
+      - id: mixed-line-ending
+        args: [--fix=lf]

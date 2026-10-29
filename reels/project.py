@@ -59,7 +59,10 @@ DEFAULTS: dict[str, Any] = {
         "prompts": ["minimal thoughtful piano with soft synth pulse, calm tension, 80 bpm, no drums",
                     "ambient cinematic underscore, soft piano motif, warm pad, slow, reflective"],
         "file": None,
-        "volume": 0.24,
+        "volume": 0.24,           # громкость под голосом, если duck: false
+        "duck": True,             # музыка тише под голосом и громче в паузах и на финальной карточке
+        "duck_db": -15.0,         # насколько тише под речью, дБ
+        "duck_base_db": -3.0,     # уровень музыки вне речи, дБ относительно music.wav (−18 LUFS)
         "seed": 5,
     },
     "captions": {"max_chars": 26, "max_words": 5},

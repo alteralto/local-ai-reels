@@ -1,0 +1,33 @@
+# Ruff: линтер для CI (.github/workflows/lint.yml) и pre-commit.
+# Сейчас обязателен только `ruff check`; `ruff format` пока не включён.
+line-length = 120
+target-version = "py310"
+extend-exclude = [
+    "local-model-test/results",
+    "docs/media",
+]
+
+[lint]
+# E/W — pycodestyle, F — pyflakes (неопределённые имена, лишние импорты),
+# B — flake8-bugbear (изменяемые значения по умолчанию, поздняя привязка в замыканиях и т. п.)
+select = ["E", "F", "W", "B"]
+ignore = [
+    "E501",  # длину строк держим по line-length глазами и будущим `ruff format`; длинные f-строки с HTML/JS не режем
+    "B905",  # zip(strict=...) — включим, когда пройдёмся по сценам и таймингам
+]
+# Следующий шаг: добавить "I" (порядок импортов) после разового `ruff check --select I --fix .` по всему коду —
+# сейчас в коде смешаны `from . import a as x, b` и раздельные импорты.
+
+[lint.isort]
+known-first-party = ["reels", "conftest"]
+
+[lint.per-file-ignores]
+# Ручной режим 0.1.0: скрипты остаются как справочник, не переписываем их под линтер.
+"scripts/**" = ["E401", "E702", "E731", "B"]
+"tools/build_pdf.py" = ["E741"]
+# TODO: убрать после чистки — это настоящие замечания, а не стиль (`ruff check --fix` исправит большую часть).
+"reels/draft.py" = ["F401"]               # SceneError импортирован, но не используется
+"reels/export.py" = ["F401", "B033"]      # лишний Counter; «сейчас» дважды в STOP
+"reels/qa.py" = ["F401"]                  # лишний shutil
+"reels/scenes/maps.py" = ["F541", "B007"]  # f-строка без подстановок; неиспользуемый i в enumerate
+"reels/voice.py" = ["B904"]               # raise в except ImportError без from

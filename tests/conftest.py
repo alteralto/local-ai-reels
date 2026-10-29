@@ -16,6 +16,15 @@ BLOCKS = [
 ]
 
 
+if os.environ.get("REELS_INTEGRATION") != "1" and not os.environ.get("REELS_GSAP"):
+    # модульные тесты не ходят в сеть за GSAP: подставляем заглушку (интеграционные берут настоящий)
+    _stub = Path(__file__).resolve().parent / "data" / "gsap-stub.js"
+    _stub.parent.mkdir(exist_ok=True)
+    if not _stub.exists():
+        _stub.write_text("window.gsap = window.gsap || {};\n", encoding="utf-8")
+    os.environ["REELS_GSAP"] = str(_stub)
+
+
 def pytest_collection_modifyitems(config, items):
     if os.environ.get("REELS_INTEGRATION") == "1":
         return

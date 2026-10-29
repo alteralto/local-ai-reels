@@ -120,7 +120,7 @@ def _check_gate(r: Run):
 
 def _accent_inputs(r: Run):
     v = r.project.cfg["voice"]
-    return sha(r.hashes["check"], v["engine"], v["ref_text"], v["accents"])
+    return sha(r.hashes["check"], v["engine"], v["ref_text"], v["accents"], v.get("qwen_keep_accents"))
 
 
 def _accent_do(r: Run):
@@ -130,7 +130,8 @@ def _accent_do(r: Run):
 
 
 def _accent_gate(r: Run):
-    if r.project.cfg["voice"]["engine"] != "f5":
+    v = r.project.cfg["voice"]
+    if not (v["engine"] == "f5" or (v["engine"] == "qwen3" and v.get("qwen_keep_accents"))):
         return None
     path = r.project.voice_dir / "accents.json"
     acc = read_json(path, {})
@@ -140,9 +141,9 @@ def _accent_gate(r: Run):
 
 def _voice_inputs(r: Run):
     p, v = r.project, r.project.cfg["voice"]
-    refs = [p.path(v["ref"].format(voice=x)) for x in v["voices"]] if v["engine"] == "f5" else []
-    return sha(r.hashes["accent"], p.voice_dir / "accents.json",
-               {k: v[k] for k in ("engine", "voices", "seeds", "speed", "nfe_step", "min_ratio")},
+    refs = [p.path(v["ref"].format(voice=x)) for x in v["voices"]] if v["engine"] in ("f5", "qwen3") else []
+    keys = ("engine", "voices", "seeds", "speed", "nfe_step", "min_ratio", "qwen_model", "qwen_language")
+    return sha(r.hashes["accent"], p.voice_dir / "accents.json", {k: v.get(k) for k in keys},
                *(x for x in refs if x), p.path(v["file"]) if v["engine"] == "file" else "")
 
 
@@ -253,8 +254,8 @@ def _snapshot_do(r: Run, edit: str):
 
 def _snapshot_gate(r: Run):
     p = r.project
-    sheets = [p.out / f"{p.slug}-{e}-frames.jpg" for e in r.edits]
-    return sha(*[p.edit_dir(e) / "index.html" for e in r.edits]), (
+    sheets = [p.out / f"{p.slug}-{e}-frames.jpg" for e in p.edits]
+    return sha(*[p.edit_dir(e) / "index.html" for e in p.edits]), (
         "Посмотрите кадры до рендера (переносы строк, наложения, обрезанные штрихи):\n"
         + "\n".join(f"  {s}" for s in sheets))
 
@@ -287,12 +288,21 @@ def _finish_do(r: Run, edit: str):
     out = p.out_mp4(edit)
     out.parent.mkdir(parents=True, exist_ok=True)
     finish.poster(_render_mp4(r, edit), at, out)
-    res = finish.check(out, {"width": 1080, "height": 1920, "fps": p.cfg["render"]["fps"]})
     script = " ".join(p.blocks[b - 1].text for b in order)
-    res["verify"] = finish.verify(out, script, p.cfg["asr"])
+    v = finish.verify(out, script, p.cfg["asr"])
+    expect = {"width": 1080, "height": 1920, "fps": p.cfg["render"]["fps"]}
+    if v.get("ratio") is not None:
+        expect["ratio"] = v["ratio"]
+    res = finish.check(out, expect)
+    res.update(v)
     qa_json = read_json(p.edit_dir(edit) / "qa.json")
     res.update({"edit": edit, "order": "".join(map(str, order)), "file": str(out), "poster_at": at,
-                "qa": qa_json if isinstance(qa_json, list) else None})
+                "layout_issues": qa_json if isinstance(qa_json, list) else None})
+    try:
+        from . import export
+        res["export"] = export.export_edit(p, edit, order, r.timing(), out, at)
+    except Exception as e:  # noqa: BLE001 — субтитры и обложки не должны ронять готовый ролик
+        say(f"    ! экспорт для публикации пропущен: {e}")
     write_json(p.edit_dir(edit) / "finish.json", res)
     return {"file": str(out), "ok": res.get("ok")}
 
@@ -362,8 +372,12 @@ def _run_one(r: Run, stage: Stage, edit: str | None) -> None:
         return
     t0 = time.time()
     say(f"  ▸ {label}")
-    info = stage.do(*args) or {}
+    try:
+        info = stage.do(*args) or {}
+    except (FileNotFoundError, ValueError) as e:
+        raise StageError(f"{label.strip()}: {e}") from e
     dt = time.time() - t0
+    h = r.hashes[key] = stage.inputs(*args)  # этап мог сам создать часть входов (эталоны голоса Piper)
     r.state.done(key, h, {**info, "seconds": round(dt, 1)})
     r.results[key] = info
     say(f"  ✓ {label}  {dt:.1f} с")
@@ -379,10 +393,10 @@ def run(project: Project, *, yes: bool = False, edits: list[str] | None = None, 
         until: str | None = None) -> dict:
     """Прогоняет конвейер для проекта. Возвращает {этап: сведения}. GateWait — остановка на контрольной точке."""
     all_edits = project.edits
-    chosen = {e: all_edits[e] for e in (edits or all_edits)} if edits else all_edits
     unknown = set(edits or []) - set(all_edits)
     if unknown:
         raise StageError(f"нет монтажей {', '.join(sorted(unknown))}; есть: {', '.join(all_edits)}")
+    chosen = {e: all_edits[e] for e in edits} if edits else all_edits
     for s in (from_stage, only, until):
         if s and s not in STAGES:
             raise StageError(f"нет этапа «{s}»; этапы: {' → '.join(STAGES)}")
@@ -398,6 +412,8 @@ def run(project: Project, *, yes: bool = False, edits: list[str] | None = None, 
         if only and name != only:
             # входы предыдущих этапов всё равно нужны для хэшей следующих
             _hash_only(r, stage)
+            if STAGES.index(name) < STAGES.index(only) and _stale(r, stage):
+                say(f"  ! {name}: устарел относительно reel.yaml — --only {only} возьмёт старые данные")
             continue
         if name in EDIT_STAGES:
             for e in r.edits:
@@ -412,6 +428,11 @@ def run(project: Project, *, yes: bool = False, edits: list[str] | None = None, 
     if (only in (None, "finish")) and (not until or until == "finish"):
         _report(r)
     return r.results
+
+
+def _stale(r: Run, stage: Stage) -> bool:
+    keys = [f"{stage.name}@{e}" for e in r.edits] if stage.name in EDIT_STAGES else [stage.name]
+    return any(r.state.stages.get(k, {}).get("hash") != r.hashes.get(k) for k in keys)
 
 
 def _hash_only(r: Run, stage: Stage) -> None:

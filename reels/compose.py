@@ -15,15 +15,19 @@ import os
 import re
 import shutil
 import subprocess
+import tarfile
+import tempfile
+import urllib.request
 from pathlib import Path
 
-from . import scenes, sfx
+from . import mixdown, scenes, sfx
 from . import timing as tm
 from .project import Project
 from .scenes import SceneCtx, Theme, esc, num, rich
-from .util import say
+from .util import cache_dir, say
 
-GSAP_URL = "https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"
+GSAP_VERSION = "3.14.2"
+GSAP_URL = f"https://cdn.jsdelivr.net/npm/gsap@{GSAP_VERSION}/dist/gsap.min.js"
 # локальная копия GSAP (без сети): путь в REELS_GSAP или reels/vendor/gsap.min.js — кладётся рядом с index.html
 GSAP_LOCAL = Path(__file__).parent / "vendor" / "gsap.min.js"
 WHOOSH_DUR, WHOOSH_VOL, WHOOSH_LEAD = .38, .35, .14   # вжух начинается чуть раньше склейки
@@ -183,8 +187,41 @@ def js_syntax_errors(snippets: dict[str, str]) -> dict[str, str]:
 
 
 def _gsap_file() -> Path | None:
-    p = Path(os.environ.get("REELS_GSAP") or GSAP_LOCAL)
-    return p if p.is_file() else None
+    """Локальная копия GSAP, чтобы рендер не зависел от CDN (за прокси и без сети он недоступен).
+
+    Порядок: REELS_GSAP → reels/vendor/gsap.min.js → кэш → npm pack gsap@<версия> → прямое скачивание.
+    Не вышло — None: страница возьмёт GSAP с CDN.
+    """
+    if os.environ.get("REELS_GSAP"):
+        p = Path(os.environ["REELS_GSAP"])
+        return p if p.is_file() else None
+    if GSAP_LOCAL.is_file():
+        return GSAP_LOCAL
+    cached = cache_dir() / f"gsap-{GSAP_VERSION}" / "gsap.min.js"
+    if cached.is_file():
+        return cached
+    cached.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            npm = shutil.which("npm") or shutil.which("npm.cmd")
+            if not npm:
+                raise OSError("нет npm")
+            subprocess.run([npm, "pack", f"gsap@{GSAP_VERSION}", "--pack-destination", tmp, "--silent"],
+                           check=True, capture_output=True, timeout=120)
+            tgz = next(Path(tmp).glob("gsap-*.tgz"))
+            with tarfile.open(tgz) as t:
+                data = t.extractfile("package/dist/gsap.min.js").read()
+        cached.write_bytes(data)
+        return cached
+    except (OSError, subprocess.SubprocessError, StopIteration, KeyError, tarfile.TarError, AttributeError):
+        pass
+    try:
+        with urllib.request.urlopen(GSAP_URL, timeout=30) as r:
+            cached.write_bytes(r.read())
+        return cached
+    except OSError:
+        say(f"! GSAP {GSAP_VERSION} не удалось сохранить локально — страница возьмёт его с CDN", err=True)
+        return None
 
 
 # --- раскладка ----------------------------------------------------------------
@@ -258,10 +295,13 @@ def build_edit(project: Project, edit: str, order: list[int], timing: dict) -> P
 
     mus = cfg.get("music") or {}
     has_music = mus.get("engine") != "none" and project.music_wav.exists()
+    duck = has_music and bool(mus.get("duck", True))
     if has_music:
+        # с приглушением громкость и затухания уже вписаны в music.wav монтажа (mixdown.duck_music)
+        vol, fades = (1, "") if duck else (mus.get("volume", .24), ' data-fade-in="0.6" data-fade-out="1.6"')
         audio_html.append(
             f'<audio id="music" class="clip" src="music.wav" data-start="0" data-duration="{num(total)}" '
-            f'data-volume="{num(mus.get("volume", .24))}" data-fade-in="0.6" data-fade-out="1.6" data-track-index="3"></audio>')
+            f'data-volume="{num(vol)}"{fades} data-track-index="3"></audio>')
 
     endcard_html = endcard_js = ""
     if card:
@@ -309,7 +349,10 @@ def build_edit(project: Project, edit: str, order: list[int], timing: dict) -> P
     d.mkdir(parents=True, exist_ok=True)
     (d / "index.html").write_text(html, encoding="utf-8")
     shutil.copyfile(project.master_wav, d / "voice.wav")
-    if has_music:
+    if duck:
+        mixdown.duck_music(project.music_wav, placements, total, d / "music.wav",
+                           base_db=float(mus.get("duck_base_db", -3.0)), duck_db=float(mus.get("duck_db", -15.0)))
+    elif has_music:
         shutil.copyfile(project.music_wav, d / "music.wav")
     elif (d / "music.wav").exists():
         (d / "music.wav").unlink()
