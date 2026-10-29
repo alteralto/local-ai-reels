@@ -192,7 +192,13 @@ def _takes_file(project: Project, takes_dir: Path) -> list[dict]:
     verify = asr.available()
     if not verify:
         util.say("сверка Whisper пропущена: нет faster-whisper (pip install faster-whisper)", err=True)
-    return [_take(project, f, None, None, verify=verify)]
+    try:
+        return [_take(project, f, None, None, verify=verify)]
+    except Exception as e:  # noqa: BLE001 — модель Whisper не скачалась и т. п.: свою озвучку принимаем без сверки
+        if not verify:
+            raise
+        util.say(f"сверка Whisper пропущена: {str(e).splitlines()[0][:200]}", err=True)
+        return [_take(project, f, None, None, verify=False)]
 
 
 def synthesize(project: Project) -> dict:

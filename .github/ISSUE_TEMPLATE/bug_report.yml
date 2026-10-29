@@ -1,0 +1,55 @@
+name: Ошибка / Bug report
+description: Что-то не работает или работает не так
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за репорт! Сначала загляните в [частые ошибки](https://github.com/alteralto/local-ai-reels/blob/main/docs/guide.md#частые-ошибки).
+        English is fine too.
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Что вы делали, что ожидали и что получили.
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Команда и вывод
+      description: Команда целиком (`python -m reels run ...`) и последние строки вывода. Длинный лог — файлом.
+      render: shell
+    validations:
+      required: true
+  - type: dropdown
+    id: stage
+    attributes:
+      label: Этап
+      options: [check, accent, voice, align, music, build, snapshot, render, finish, draft, batch, установка, скрипты scripts/, другое]
+    validations:
+      required: true
+  - type: textarea
+    id: reel
+    attributes:
+      label: reel.yaml (если важен)
+      render: yaml
+  - type: textarea
+    id: env
+    attributes:
+      label: Окружение
+      description: ОС, `python --version`, `node --version`, `ffmpeg -version | head -1`, GPU и драйвер, версия `reels --version`.
+      value: |
+        ОС:
+        Python:
+        Node.js:
+        ffmpeg:
+        GPU:
+        local-ai-reels:
+    validations:
+      required: true
+  - type: textarea
+    id: media
+    attributes:
+      label: Кадры или ролик
+      description: Если дефект виден в картинке — приложите кадр, контактный лист или короткий ролик.

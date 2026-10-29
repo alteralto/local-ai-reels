@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Пошаговая инструкция и частые ошибки
+    url: https://github.com/alteralto/local-ai-reels/blob/main/docs/guide.md
+    about: Установка, свой голос, ударения, монтаж, рендер — и решения типичных проблем.
+  - name: Уязвимость / Security issue
+    url: https://github.com/alteralto/local-ai-reels/security/advisories/new
+    about: Сообщайте об уязвимостях приватно, не в открытом issue.
