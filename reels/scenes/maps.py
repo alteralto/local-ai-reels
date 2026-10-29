@@ -54,9 +54,12 @@ def map_(ctx: SceneCtx, p: dict) -> SceneOut:
     rp = [_xy(x) for x in pts if not x.get("accent")]   # круги — вокруг обычных точек, не вокруг «я»
     dim = bool(p.get("dim")) and r > 0
     svg = ['<svg class="map" viewBox="0 0 900 900">']
+    # круги обрезаются по карте: иначе они вылезают за поля кадра и в зону субтитров
+    defs = f'<clipPath id="{ctx.uid}-clip"><rect width="900" height="900"/></clipPath>'
     if dim:
         holes = "".join(f'<circle class="hole" cx="{x}" cy="{y}" r="0" fill="black"/>' for x, y in rp)
-        svg.append(f'<defs><mask id="{ctx.uid}-reach"><rect width="900" height="900" fill="white"/>{holes}</mask></defs>')
+        defs += f'<mask id="{ctx.uid}-reach"><rect width="900" height="900" fill="white"/>{holes}</mask>'
+    svg.append(f"<defs>{defs}</defs>")
     svg.append(f'<g class="grid">{GRID}</g>')
     if p.get("route"):
         d = str(p["route"])
@@ -66,7 +69,8 @@ def map_(ctx: SceneCtx, p: dict) -> SceneOut:
     if dim:
         svg.append(f'<rect class="dim" width="900" height="900" mask="url(#{ctx.uid}-reach)"/>')
     if r:
-        svg += [f'<circle class="ring" cx="{x}" cy="{y}" r="0"/>' for x, y in rp]
+        svg.append(f'<g clip-path="url(#{ctx.uid}-clip)">'
+                   + "".join(f'<circle class="ring" cx="{x}" cy="{y}" r="0"/>' for x, y in rp) + "</g>")
     for i, pt in enumerate(pts):
         x, y = _xy(pt)
         lab = str(pt.get("label", ""))

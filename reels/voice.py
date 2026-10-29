@@ -17,7 +17,7 @@ import subprocess
 import wave
 from pathlib import Path
 
-from . import asr, util
+from . import asr, hardware, util
 from .project import Project
 
 PAD = 0.45  # тишина в конце эталона: без неё хвост эталона просачивается в начало синтеза
@@ -170,9 +170,10 @@ def _qwen_model(project: Project):
             src = str(local)
             break
     dev = util.device()
-    kw = {"device_map": "cuda:0" if dev == "cuda" else "cpu",
-          "dtype": torch.bfloat16 if dev == "cuda" else torch.float32}
-    if dev == "cuda":
+    cuda = dev.startswith("cuda")
+    kw = {"device_map": "cuda:0" if dev == "cuda" else dev,
+          "dtype": torch.bfloat16 if cuda else torch.float32}
+    if cuda:
         try:
             import flash_attn  # noqa: F401, WPS433
             kw["attn_implementation"] = "flash_attention_2"
@@ -293,11 +294,32 @@ def _takes_file(project: Project, takes_dir: Path) -> list[dict]:
         return [_take(project, f, None, None, verify=False)]
 
 
+def _engine(project: Project) -> tuple[str, str | None]:
+    """(движок, причина замены). Замена F5/Qwen3 → Piper — только в конвейере (hardware.apply) без видеокарты."""
+    requested = project.cfg["voice"]["engine"]
+    acc = hardware.active_for(project)
+    if acc is None:
+        return requested, None
+    engine, note = acc.voice_plan(requested)
+    if engine == requested:
+        return requested, None
+    try:
+        for name in project.cfg["voice"]["voices"]:
+            piper_model(project, name)
+    except util.ToolError as e:
+        raise util.ToolError(f"{requested} без видеокарты слишком медленный, а запасной Piper не готов: {e}\n"
+                             "Или разрешите медленный режим: hardware.allow_slow: true (REELS_ALLOW_SLOW=1)") from e
+    util.say(note, err=True)
+    return engine, f"{requested} без видеокарты (профиль {acc.profile}); hardware.allow_slow: true — оставить {requested}"
+
+
 def synthesize(project: Project) -> dict:
     """Дубли выбранным движком, сверка Whisper, лучший дубль → master.wav. Возвращает choice.json.
 
     Лучший — с наибольшей сверкой; при равенстве — раньше по порядку голоса × seeds.
     Сверка ниже voice.min_ratio — дубль всё равно берётся, но с "ok": false и предупреждением.
+    В конвейере без видеокарты F5/Qwen3 заменяются на hardware.tts_engine_fallback (Piper), если не задан
+    hardware.allow_slow; тогда в choice.json "fallback": "piper" и "requested": исходный движок.
     """
     v = project.cfg["voice"]
     takes_dir = project.voice_dir / "takes"
@@ -305,13 +327,16 @@ def synthesize(project: Project) -> dict:
         shutil.rmtree(takes_dir)
     takes_dir.mkdir(parents=True)
     engines = {"f5": _takes_f5, "qwen3": _takes_qwen3, "piper": _takes_piper, "file": _takes_file}
-    takes = engines[v["engine"]](project, takes_dir)
+    engine, fallback = _engine(project)
+    takes = engines[engine](project, takes_dir)
     takes = sorted(takes, key=lambda t: -(t["ratio"] if t["ratio"] is not None else 1.0))  # sorted устойчив
     util.write_json(project.voice_dir / "takes.json", takes)
     best = takes[0]
     ok = best["ratio"] is None or best["ratio"] >= v["min_ratio"]
     shutil.copyfile(project.voice_dir / best["file"], project.master_wav)
     choice = {"file": best["file"], "voice": best["voice"], "seed": best["seed"], "ratio": best["ratio"], "ok": ok}
+    if fallback:
+        choice.update(engine=engine, requested=v["engine"], fallback=engine, fallback_reason=fallback)
     util.write_json(project.voice_dir / "choice.json", choice)
     if ok:
         util.say(f"выбран дубль {best['file']} (сверка {best['ratio']})")

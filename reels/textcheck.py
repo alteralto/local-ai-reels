@@ -63,11 +63,11 @@ def check_script(project: Project) -> list[Issue]:
 
 
 def _anchors(obj) -> list[str]:
-    """Все строковые якоря at в параметрах сцены (вложенные списки и словари тоже)."""
+    """Все строковые якоря (at и *_at) в параметрах сцены, вложенные списки и словари тоже."""
     out: list[str] = []
     if isinstance(obj, dict):
         for k, v in obj.items():
-            if k == "at":
+            if k == "at" or str(k).endswith("_at"):
                 out += [x for x in (v if isinstance(v, list) else [v]) if isinstance(x, str)]
             else:
                 out += _anchors(v)

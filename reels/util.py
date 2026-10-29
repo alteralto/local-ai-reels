@@ -68,18 +68,17 @@ def sha(*items) -> str:
 
 
 def device(pref: str = "auto") -> str:
-    """cuda, если есть видеокарта и torch её видит; иначе cpu. pref=cuda|cpu — без проверки."""
+    """Устройство torch по профилю железа (reels.hardware): cuda / cuda:N / mps / cpu. pref≠auto — без проверки.
+
+    Профиль учитывает REELS_DEVICE / REELS_PROFILE и раздел hardware в reel.yaml (через hardware.apply);
+    заодно ставит число потоков torch для CPU.
+    """
     if pref and pref != "auto":
         return pref
-    try:
-        import torch  # noqa: WPS433
-        return "cuda" if torch.cuda.is_available() else "cpu"
-    except ImportError:
-        try:
-            import ctranslate2  # noqa: WPS433
-            return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
-        except ImportError:
-            return "cpu"
+    from . import hardware  # noqa: WPS433 — лениво: hardware импортирует util
+    acc = hardware.current()
+    hardware.configure_torch(acc)
+    return acc.torch_device
 
 
 def cache_dir() -> Path:

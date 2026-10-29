@@ -68,10 +68,24 @@ DEFAULTS: dict[str, Any] = {
     "captions": {"max_chars": 26, "max_words": 5},
     "render": {"fps": 30, "quality": "looks"},
     "poster": "auto",             # auto | секунда | {edit: <монтаж>, at: <секунда>}
+    "hardware": {                 # ускорение: docs/hardware.md; переменные REELS_PROFILE/DEVICE/THREADS важнее
+        "profile": "auto",        # auto | gpu-max | gpu-lowvram | cpu-fast | cpu-quality | apple
+        "device": "auto",         # auto | cuda | cuda:N | mps | cpu — устройство torch (F5, Qwen3, MusicGen)
+        "cuda_device": 0,         # номер видеокарты (как в nvidia-smi)
+        "threads": 0,             # потоки CPU; 0 — по числу физических ядер
+        "allow_slow": False,      # true — F5/Qwen3/MusicGen на CPU без замен (медленно)
+        "whisper_model": "auto",  # auto — asr.model (на cpu-fast — small); или имя/папка модели
+        "whisper_compute": "auto",  # auto | float16 | int8_float16 | int8 …
+        "tts_engine_fallback": "piper",  # piper | none — чем заменить F5/Qwen3 без видеокарты
+        "music_variants": "auto",  # auto | число вариантов MusicGen
+        "render_workers": "auto",  # auto | число воркеров HyperFrames
+        "encoder": "auto",        # auto | libx264 | h264_nvenc | h264_videotoolbox | h264_qsv | h264_amf
+    },
 }
 
 VOICE_ENGINES = {"f5", "qwen3", "piper", "file"}
 MUSIC_ENGINES = {"musicgen", "file", "none"}
+HW_PROFILES = ("auto", "gpu-max", "gpu-lowvram", "cpu-fast", "cpu-quality", "apple")
 
 
 class ConfigError(ValueError):
@@ -233,4 +247,14 @@ def from_dict(raw: dict, directory: Path) -> Project:
         raise ConfigError(f"music.engine: одно из {sorted(MUSIC_ENGINES)}")
     if cfg["music"]["engine"] == "file" and not cfg["music"]["file"]:
         raise ConfigError("music.engine: file — нужен music.file")
+    hw = cfg["hardware"]
+    if not isinstance(hw, dict):
+        raise ConfigError("hardware: ожидался словарь (см. docs/hardware.md)")
+    unknown = set(hw) - set(DEFAULTS["hardware"])
+    if unknown:
+        raise ConfigError(f"hardware: неизвестные поля: {', '.join(sorted(unknown))}")
+    if str(hw["profile"]).lower() not in HW_PROFILES:
+        raise ConfigError(f"hardware.profile: одно из {', '.join(HW_PROFILES)}")
+    if not re.fullmatch(r"auto|cpu|mps|cuda(:\d+)?", str(hw["device"]).lower()):
+        raise ConfigError("hardware.device: auto, cuda, cuda:N, mps или cpu")
     return Project(directory, cfg, blocks)

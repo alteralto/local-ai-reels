@@ -14,6 +14,7 @@
 """
 from __future__ import annotations
 
+import copy
 import gc
 import importlib.util
 import os
@@ -224,19 +225,21 @@ _CACHE: dict[bool, Hardware] = {}
 
 def detect(deep: bool = False, refresh: bool = False) -> Hardware:
     """Что есть на компьютере. deep=True — ещё и импорт torch (CUDA/MPS глазами torch). Кэшируется."""
-    if not refresh and (deep in _CACHE or (not deep and True in _CACHE)):
-        return _CACHE[deep] if deep in _CACHE else _CACHE[True]
-    if not refresh and not deep or False not in _CACHE or refresh:
-        hw = _detect_shallow()
-    else:
-        hw = Hardware(**{**asdict(_CACHE[False]), "gpus": list(_CACHE[False].gpus)})
-        hw.gpus = [GPU(**g) if isinstance(g, dict) else g for g in hw.gpus]
-    if deep:
-        _probe_torch(hw)
-        if hw.ct2_cuda is None and hw.gpus:
-            _probe_ct2(hw)
-        hw.deep = True
-    _CACHE[deep] = hw
+    if refresh:
+        _CACHE.clear()
+    if True in _CACHE:
+        return _CACHE[True]
+    if not deep and False in _CACHE:
+        return _CACHE[False]
+    base = _CACHE.setdefault(False, _CACHE.get(False) or _detect_shallow())
+    if not deep:
+        return base
+    hw = copy.deepcopy(base)
+    _probe_torch(hw)
+    if hw.ct2_cuda is None and hw.gpus:
+        _probe_ct2(hw)
+    hw.deep = True
+    _CACHE[True] = hw
     return hw
 
 
@@ -443,9 +446,10 @@ def resolve(cfg_hw: dict | None, hw: Hardware, env: dict | None = None) -> Accel
     threads = max(1, threads)
 
     # 4. Whisper (CTranslate2: только CUDA или CPU)
-    wdev = "cuda" if tdev == "cuda" and ct2_cuda else ("cuda" if profile.startswith("gpu-") and ct2_cuda else "cpu")
-    if tdev == "cpu" and device == "cpu":
+    if device == "cpu" or profile in ("cpu-fast", "cpu-quality", "apple"):
         wdev = "cpu"
+    else:
+        wdev = "cuda" if ct2_cuda else "cpu"
     if profile.startswith("gpu-") and not ct2_cuda and hw.gpus:
         warnings.append("faster-whisper не видит CUDA (нет cuBLAS/cuDNN 9?) — Whisper пойдёт на CPU")
     if _auto(cfg.get("whisper_compute")):
@@ -463,7 +467,9 @@ def resolve(cfg_hw: dict | None, hw: Hardware, env: dict | None = None) -> Accel
     else:
         mvar = max(1, int(mv))
     fb = cfg.get("tts_engine_fallback")
-    fb = None if _auto(fb) is False and str(fb).lower() in ("none", "keep", "off", "false") or fb is None else str(fb)
+    fb = None if fb is None or str(fb).strip().lower() in ("", "none", "keep", "off", "false") else str(fb)
+    if fb not in (None, "piper"):
+        raise ConfigError(f"hardware.tts_engine_fallback: «{fb}» — piper или none")
     rw = cfg.get("render_workers")
     rworkers = render_workers(hw) if _auto(rw) else max(1, int(rw))
     enc = cfg.get("encoder")
@@ -624,10 +630,12 @@ def torch_index(hw: Hardware) -> str:
 
 
 def torch_install(hw: Hardware) -> str:
+    """Команда установки PyTorch под это железо (поверх torch без CUDA — с --force-reinstall)."""
     if hw.os == "darwin":
         return "pip install torch torchaudio   # на Mac MPS уже внутри"
     tag = torch_index(hw)
-    return f"pip install --force-reinstall torch torchaudio --index-url {TORCH_INDEX.format(tag=tag)}"
+    force = "--force-reinstall " if hw.torch and hw.gpus and hw.torch_cuda is False else ""
+    return f"pip install {force}torch torchaudio --index-url {TORCH_INDEX.format(tag=tag)}"
 
 
 _HINTS = {
@@ -674,6 +682,8 @@ def missing(hw: Hardware, voice_engine: str = "f5", music_engine: str = "musicge
 
 
 def _fmt(sec: float) -> str:
+    if sec <= 0:
+        return "—"
     if sec < 90:
         return f"~{max(1, round(sec))} с"
     if sec < 5400:

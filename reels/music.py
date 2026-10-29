@@ -10,7 +10,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from . import util
+from . import hardware, util
 from .project import Project
 
 LOUDNORM = "loudnorm=I=-18:TP=-2:LRA=11"
@@ -98,6 +98,7 @@ def _generate(prompt: str, seed: int, seconds: float, out: Path, model: str = MO
     except ImportError as e:
         raise util.ToolError("для MusicGen нужны torch, transformers и scipy: pip install torch transformers scipy") from e
     if model not in _GEN:
+        hardware.release()  # gpu-lowvram: выгрузить Whisper перед MusicGen
         dev = util.device()
         util.say(f"MusicGen: загружаю {model} ({dev}; на процессоре — несколько минут на вариант)")
         _GEN.clear()
@@ -117,27 +118,40 @@ def _generate(prompt: str, seed: int, seconds: float, out: Path, model: str = MO
 def make_music(project: Project, seconds: float) -> Path | None:
     """music.wav на −18 LUFS длиной не меньше seconds; engine none → None.
 
-    musicgen: по варианту на каждый промпт (seed = music.seed + i), выбирается вариант с наименьшим числом
+    musicgen: по варианту на каждый промпт (seed = music.seed + i; в конвейере профиль железа может урезать число
+    вариантов или, без видеокарты и без hardware.allow_slow, пропустить музыку), выбирается вариант с наименьшим числом
     и глубиной провалов громкости (при равенстве — первый); всё — в choice.json.
     """
     c = project.cfg["music"]
     if c["engine"] == "none":
         return None
     out = project.music_wav
+    prompts = c["prompts"] if isinstance(c["prompts"], list) else [c["prompts"]]
+    acc = hardware.active_for(project)  # план конвейера: без видеокарты MusicGen пропускается или 1 вариант
+    n_variants, model = len(prompts), c.get("model") or MODEL
+    if acc is not None and c["engine"] == "musicgen":
+        engine, n_variants, note = acc.music_plan("musicgen", len(prompts))
+        if note:
+            util.say(note, err=engine == "none")
+        if engine == "none":
+            out.unlink(missing_ok=True)
+            util.write_json(project.music_dir / "choice.json", {"skipped": note, "profile": acc.profile})
+            return None
+        if acc.music_model and not c.get("model"):
+            model = acc.music_model
     if c["engine"] == "file":
         src = project.path(c["file"])
         if not src or not src.is_file():
             raise util.ToolError(f"music.file: нет файла {src}")
         normalize(src, out)
         return extend(out, seconds)
-    prompts = c["prompts"] if isinstance(c["prompts"], list) else [c["prompts"]]
     if not prompts:
         raise util.ToolError("music.prompts: нужен хотя бы один промпт")
     variants = []
-    for i, prompt in enumerate(prompts):
+    for i, prompt in enumerate(prompts[:n_variants]):
         seed = int(c["seed"]) + i
         util.say(f"MusicGen, вариант {i}: {prompt}")
-        raw = _generate(prompt, seed, seconds, project.music_dir / f"variant-{i}.raw.wav", c.get("model") or MODEL)
+        raw = _generate(prompt, seed, seconds, project.music_dir / f"variant-{i}.raw.wav", model)
         f = normalize(raw, project.music_dir / f"variant-{i}.wav")
         raw.unlink(missing_ok=True)
         d = dips(f)
@@ -150,6 +164,7 @@ def make_music(project: Project, seconds: float) -> Path | None:
     extend(out, seconds)
     util.write_json(project.music_dir / "choice.json", {"file": variants[best]["file"], "index": best,
                                                         "variants": variants})
+    hardware.release()  # gpu-lowvram: освободить видеопамять после MusicGen
     if variants[best]["dips"]:
         util.say(f"ВНИМАНИЕ: во всех вариантах есть провалы громкости; взят {variants[best]['file']} — "
                  "проверьте на слух или поменяйте music.seed", err=True)
